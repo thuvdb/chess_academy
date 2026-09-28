@@ -1,0 +1,3 @@
+# Task Ledger State Directory
+# Orchestrator ghi trạng thái task vào đây sau mỗi phase
+# File format: <task_id>.json (ví dụ: CAMS-0001.json)
