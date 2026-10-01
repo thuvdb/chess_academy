@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Classes from './pages/Classes';
 import StudentList from './pages/StudentList';
 import Schedule from './pages/Schedule';
+import Scanner from './pages/Scanner';
 import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="/classes" element={<Classes />} />
             <Route path="/classes/:classId" element={<StudentList />} />
             <Route path="/schedule" element={<Schedule />} />
+            <Route path="/scanner" element={<Scanner />} />
           </Route>
         </Route>
 

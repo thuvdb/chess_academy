@@ -8,6 +8,7 @@ import {
   Users,
   LogOut,
   ChevronRight,
+  ScanSearch,
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/classes', label: 'Classes', icon: BookOpen },
   { to: '/schedule', label: 'Schedule', icon: Calendar },
   { to: '/students', label: 'Students', icon: Users },
+  { to: '/scanner', label: 'AI Scanner', icon: ScanSearch },
 ];
 
 export default function Sidebar() {

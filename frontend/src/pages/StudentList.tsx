@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Users, UserPlus, Trash2,
   BookOpen, Calendar, GraduationCap, RefreshCw
@@ -34,7 +34,6 @@ function ScheduleDisplay({ schedule }: { schedule: Record<string, string[]> | nu
 
 export default function StudentList() {
   const { classId } = useParams<{ classId: string }>();
-  const navigate = useNavigate();
 
   const [cls, setCls] = useState<ClassItem | null>(null);
   const [students, setStudents] = useState<EnrollmentItem[]>([]);

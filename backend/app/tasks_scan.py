@@ -43,6 +43,8 @@ async def _process_job_async(job_id: str) -> dict:
     from app.services import pdf_service, scan_service
     from app.services.board_detector import detect_boards
     from app.services.board_rectifier import rectify_board
+    from app.services.piece_classifier import classify_cells
+    from app.services.fen_builder import build_fen_from_grid
     from app.models.base import ScanStatus
 
     start = time.monotonic()
@@ -79,9 +81,11 @@ async def _process_job_async(job_id: str) -> dict:
                     logger.warning("Board detection failed on page %d: %s", page_num, exc)
                     boards = []
 
-                # 4. Rectify + save each detected board
+                # 4. Rectify, classify piece, build FEN + save each detected board
                 for board in boards:
                     board_image_url = None
+                    fen_candidate = None
+                    cell_confidence = None
                     try:
                         rect_result = rectify_board(
                             source_image=page_img_bytes,
@@ -92,9 +96,28 @@ async def _process_job_async(job_id: str) -> dict:
                             board_index=board["board_index"],
                         )
                         board_image_url = rect_result.get("rectified_url")
+                        cells = rect_result.get("cells", [])
+
+                        if cells:
+                            classified_cells = classify_cells(cells)
+                            fen_data = build_fen_from_grid(classified_cells)
+                            fen_candidate = fen_data.get("fen_candidate")
+                            cell_confidence = {
+                                "validation": fen_data.get("validation"),
+                                "errors": fen_data.get("errors", []),
+                                "low_confidence_cells": fen_data.get("low_confidence_cells", []),
+                                "cells": [
+                                    {
+                                        "square": c["square"],
+                                        "piece": c["piece"],
+                                        "confidence": c["confidence"],
+                                    }
+                                    for c in classified_cells
+                                ],
+                            }
                     except Exception as exc:
                         logger.warning(
-                            "Board rectification failed page=%d board=%d: %s",
+                            "Board processing failed page=%d board=%d: %s",
                             page_num, board["board_index"], exc,
                         )
 
@@ -111,6 +134,8 @@ async def _process_job_async(job_id: str) -> dict:
                         },
                         confidence_board=board["confidence"],
                         board_image_url=board_image_url,
+                        fen_candidate=fen_candidate,
+                        cell_confidence=cell_confidence,
                     )
                     total_boards += 1
 
