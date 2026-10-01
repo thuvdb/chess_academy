@@ -7,6 +7,10 @@ import Classes from './pages/Classes';
 import StudentList from './pages/StudentList';
 import Schedule from './pages/Schedule';
 import Scanner from './pages/Scanner';
+import Puzzles from './pages/Puzzles';
+import Practice from './pages/Practice';
+import Assignments from './pages/Assignments';
+import Leaderboard from './pages/Leaderboard';
 import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
 
@@ -36,6 +40,10 @@ function App() {
             <Route path="/classes/:classId" element={<StudentList />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/scanner" element={<Scanner />} />
+            <Route path="/puzzles" element={<Puzzles />} />
+            <Route path="/practice" element={<Practice />} />
+            <Route path="/assignments" element={<Assignments />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
           </Route>
         </Route>
 

@@ -46,9 +46,7 @@ async def upload_pdf(
     Processing is queued as a Celery background task.
     """
     # Validate file type
-    if file.content_type not in ALLOWED_TYPES and not (
-        file.filename or "").lower().endswith(".pdf")
-    :
+    if file.content_type not in ALLOWED_TYPES and not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, detail="Only PDF files are accepted")
 
     file_bytes = await file.read()

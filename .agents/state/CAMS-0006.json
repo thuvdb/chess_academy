@@ -1,0 +1,24 @@
+{
+  "task_id": "CAMS-0006",
+  "type": "FEATURE",
+  "state": "DONE",
+  "specialists_invoked": [
+    "cams-chess",
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Puzzle rating K-factor uses rule: K=32 if rating < 1200, K=24 if < 2000, K=16 if >= 2000",
+    "Auto-grading checks user moves_uci against puzzle_solutions.move_uci",
+    "Frontend uses react-chessboard v5 options API and chess.js for legal moves validation"
+  ],
+  "handoff": null,
+  "updated_at": "2026-10-01T14:48:00+07:00"
+}

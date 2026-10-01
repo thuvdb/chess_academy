@@ -5,18 +5,23 @@ import {
   LayoutDashboard,
   BookOpen,
   Calendar,
-  Users,
   LogOut,
   ChevronRight,
   ScanSearch,
+  Swords,
+  Trophy,
+  ClipboardList,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/classes', label: 'Classes', icon: BookOpen },
   { to: '/schedule', label: 'Schedule', icon: Calendar },
-  { to: '/students', label: 'Students', icon: Users },
   { to: '/scanner', label: 'AI Scanner', icon: ScanSearch },
+  { to: '/puzzles', label: 'Puzzle Bank', icon: Swords },
+  { to: '/practice', label: 'Luyện tập', icon: Swords },
+  { to: '/assignments', label: 'Bài tập về nhà', icon: ClipboardList },
+  { to: '/leaderboard', label: 'Bảng xếp hạng', icon: Trophy },
 ];
 
 export default function Sidebar() {
