@@ -1,0 +1,32 @@
+{
+  "task_id": "CAMS-0005",
+  "type": "FEATURE",
+  "state": "IN_PROGRESS",
+  "specialists_invoked": [
+    "cams-ai-cv",
+    "cams-backend"
+  ],
+  "gates": {
+    "qa": "PENDING",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "MinIO chưa được kích hoạt trong docker-compose — sẽ dùng local filesystem thay thế để dev, refactor sang MinIO khi bật MinIO service",
+    "Chưa có model YOLOv8 thực tế — board_detector dùng OpenCV thuần (contour detection) theo Sprint 3A spec",
+    "PDF test sẽ được người dùng cung cấp sau khi API sẵn sàng",
+    "Celery worker đã sẵn sàng để nhận task background"
+  ],
+  "handoff": {
+    "triggered_at": "2026-10-01T11:07:00+07:00",
+    "reason": "manual",
+    "resume_prompt": "Tiếp tục Sprint 3A (AI Scanner Pipeline Phase 1): đăng ký scan.router vào api.py, chạy smoke test pipeline PDF & board detection, và test endpoint /api/scan.",
+    "git_state": {
+      "branch": "master",
+      "last_commit": "1c97c70 WIP: handoff checkpoint for CAMS-0005 (Sprint 3A AI Scanner Phase 1)",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-01T11:07:00+07:00"
+}
