@@ -1,0 +1,22 @@
+{
+  "task_id": "CAMS-0002",
+  "type": "INFRA",
+  "state": "DONE",
+  "specialists_invoked": ["cams-frontend", "cams-mobile", "cams-database"],
+  "gates": {
+    "qa": "NOT_REQUIRED",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Tiếp tục các công việc còn lại của Sprint 0: setup Frontend, setup Mobile, và tạo database migrations"
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": null
+  },
+  "updated_at": "2026-09-29T10:01:00+07:00"
+}

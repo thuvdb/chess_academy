@@ -1,0 +1,31 @@
+{
+  "task_id": "CAMS-0004",
+  "type": "FEATURE",
+  "state": "IN_PROGRESS",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-frontend",
+    "cams-database"
+  ],
+  "gates": {
+    "qa": "PENDING",
+    "security": "PENDING",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Triển khai Sprint 2: Classes & Enrollment theo docs/03_sprint_plan.md",
+    "Tạm hoãn bước kiểm thử mobile của Sprint 1, tập trung vào Backend API và Web UI cho lớp học và tuyển sinh"
+  ],
+  "handoff": {
+    "triggered_at": "2026-10-01T09:42:00+07:00",
+    "reason": "manual",
+    "resume_prompt": "Tiếp tục triển khai Sprint 2 (Classes & Enrollment). Đọc .agents/handoff/CAMS-0004-handoff.md và docs/03_sprint_plan.md để thực hiện Backend CRUD /api/classes và Frontend màn hình quản lý lớp.",
+    "git_state": {
+      "branch": "master",
+      "last_commit": "84809bc",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-01T09:42:00+07:00"
+}
