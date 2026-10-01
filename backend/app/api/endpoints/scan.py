@@ -24,7 +24,7 @@ from app.schemas.scan import (
     ScanJobRead, ScanResultRead, ScanResultReviewRequest,
 )
 
-router = APIRouter(prefix="/scan", tags=["scan"])
+router = APIRouter()
 
 # Max upload size: 50 MB
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024

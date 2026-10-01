@@ -42,6 +42,7 @@ async def _process_job_async(job_id: str) -> dict:
     from app.core.database import async_session_factory
     from app.services import pdf_service, scan_service
     from app.services.board_detector import detect_boards
+    from app.services.board_rectifier import rectify_board
     from app.models.base import ScanStatus
 
     start = time.monotonic()
@@ -78,8 +79,25 @@ async def _process_job_async(job_id: str) -> dict:
                     logger.warning("Board detection failed on page %d: %s", page_num, exc)
                     boards = []
 
-                # 4. Save each detected board to DB
+                # 4. Rectify + save each detected board
                 for board in boards:
+                    board_image_url = None
+                    try:
+                        rect_result = rectify_board(
+                            source_image=page_img_bytes,
+                            bounding_box=board,
+                            save_dir="auto",
+                            job_id=str(job.id),
+                            page_number=page_num,
+                            board_index=board["board_index"],
+                        )
+                        board_image_url = rect_result.get("rectified_url")
+                    except Exception as exc:
+                        logger.warning(
+                            "Board rectification failed page=%d board=%d: %s",
+                            page_num, board["board_index"], exc,
+                        )
+
                     await scan_service.create_scan_result(
                         db=db,
                         job_id=job.id,
@@ -92,6 +110,7 @@ async def _process_job_async(job_id: str) -> dict:
                             "height": board["height"],
                         },
                         confidence_board=board["confidence"],
+                        board_image_url=board_image_url,
                     )
                     total_boards += 1
 

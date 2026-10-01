@@ -57,12 +57,15 @@ async def render_pdf_pages(
         list of {page_number (1-based), image_url, width, height}
     """
     try:
-        import fitz  # PyMuPDF
+        import pymupdf as fitz  # PyMuPDF >= 1.25
     except ImportError:
-        raise RuntimeError(
-            "PyMuPDF (fitz) is required for PDF rendering. "
-            "Install it with: pip install pymupdf"
-        )
+        try:
+            import fitz  # PyMuPDF legacy import
+        except ImportError:
+            raise RuntimeError(
+                "PyMuPDF is required for PDF rendering. "
+                "Install it with: pip install pymupdf"
+            )
 
     start = time.monotonic()
     pages = []
