@@ -4,6 +4,7 @@ Models: centers, branches — Root entities, no FK dependencies.
 
 from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import (

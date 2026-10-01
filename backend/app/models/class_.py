@@ -3,6 +3,7 @@ Models: classes, class_enrollments — Depends on centers, branches, users.
 """
 
 import uuid
+import sqlalchemy
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -70,8 +71,6 @@ class ClassEnrollment(UUIDMixin, Base):
     class_: Mapped["Class"] = relationship(back_populates="enrollments")
     student: Mapped["User"] = relationship(lazy="selectin")
 
-
-import sqlalchemy  # noqa: E402
 
 from typing import TYPE_CHECKING  # noqa: E402
 
