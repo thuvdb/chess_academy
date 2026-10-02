@@ -170,7 +170,7 @@ export default function Classes() {
                   <td className="px-6 py-4 text-slate-300 text-sm">{cls.teacher_name ?? <span className="text-slate-500">Unassigned</span>}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 max-w-[80px] bg-slate-700 rounded-full h-1.5">
+                      <div className="flex-1 max-w-20 bg-slate-700 rounded-full h-1.5">
                         <div
                           className="bg-amber-500 h-1.5 rounded-full transition-all"
                           style={{ width: `${Math.min(100, (cls.current_students / cls.max_students) * 100)}%` }}

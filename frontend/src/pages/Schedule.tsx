@@ -138,8 +138,8 @@ export default function Schedule() {
           {/* Time rows */}
           <div className="overflow-y-auto max-h-[60vh]">
             {HOUR_LABELS.map(hour => (
-              <div key={hour} className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-slate-700/40 min-h-[64px]">
-                <div className="px-2 py-2 text-slate-500 text-xs text-right pr-3 pt-2 flex-shrink-0">
+              <div key={hour} className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-slate-700/40 min-h-16">
+                <div className="px-2 py-2 text-slate-500 text-xs text-right pr-3 pt-2 shrink-0">
                   {hour.toString().padStart(2, '0')}:00
                 </div>
                 {dayNames.map((dn, di) => {

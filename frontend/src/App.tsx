@@ -13,6 +13,11 @@ import Assignments from './pages/Assignments';
 import Leaderboard from './pages/Leaderboard';
 import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
+import FeePlans from './pages/FeePlans';
+import Tournaments from './pages/Tournaments';
+import TournamentDetail from './pages/TournamentDetail';
+import LiveGame from './pages/LiveGame';
+import Invoices from './pages/Invoices';
 
 function App() {
   return (
@@ -44,6 +49,11 @@ function App() {
             <Route path="/practice" element={<Practice />} />
             <Route path="/assignments" element={<Assignments />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/fee-plans" element={<FeePlans />} />
+            <Route path="/invoices" element={<Invoices />} />
+            <Route path="/tournaments" element={<Tournaments />} />
+            <Route path="/tournaments/:id" element={<TournamentDetail />} />
+            <Route path="/tournaments/:id/game/:gameId" element={<LiveGame />} />
           </Route>
         </Route>
 

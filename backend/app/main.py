@@ -26,4 +26,6 @@ async def root():
 async def health_check():
     return {"status": "ok"}
 
+from app.websocket.game_handler import router as websocket_router
+app.include_router(websocket_router)
 app.include_router(api_router, prefix="/api")

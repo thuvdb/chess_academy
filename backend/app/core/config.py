@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     PAYOS_CLIENT_ID: str = ""
     PAYOS_API_KEY: str = ""
     PAYOS_CHECKSUM_KEY: str = ""
+    
+    # --- VietQR ---
+    VIETQR_BANK_ID: str = "MB"
+    VIETQR_ACCOUNT_NO: str = "1234567890"
+    VIETQR_ACCOUNT_NAME: str = "CAMS CHESS ACADEMY"
 
     model_config = {
         "env_file": ".env",

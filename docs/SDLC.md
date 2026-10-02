@@ -22,6 +22,7 @@
 | [06_maintenance.md](./06_maintenance.md)                   | Giai đoạn 6 — Bảo trì & Lộ trình (MLOps, Roadmap v1→v3.5)               |
 | [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md)       | Kiến trúc Payment Service (3 cấp Level 1/2/3, State Machine, Webhook)   |
 | [AI_SCANNER_ARCHITECTURE.md](./AI_SCANNER_ARCHITECTURE.md) | Kiến trúc AI Scanner (3 Service + FEN Validation + MLOps)               |
+| [TOURNAMENT_ARCHITECTURE.md](./TOURNAMENT_ARCHITECTURE.md) | Kiến trúc Giải đấu (Swiss/Round Robin, WebSocket, Redis Game State)     |
 
 ---
 

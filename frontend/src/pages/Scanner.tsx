@@ -196,7 +196,7 @@ export default function Scanner() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
               <Search className="w-5 h-5 text-white" />
             </div>
             AI Scanner
@@ -214,7 +214,7 @@ export default function Scanner() {
             Refresh
           </button>
 
-          <label className={`flex items-center gap-2 px-5 py-2.5 rounded-xl cursor-pointer transition-all text-sm font-medium shadow-lg ${uploading ? 'bg-slate-700 text-slate-400 cursor-wait' : 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-purple-500/25'}`}>
+          <label className={`flex items-center gap-2 px-5 py-2.5 rounded-xl cursor-pointer transition-all text-sm font-medium shadow-lg ${uploading ? 'bg-slate-700 text-slate-400 cursor-wait' : 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-purple-500/25'}`}>
             {uploading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
@@ -259,7 +259,7 @@ export default function Scanner() {
                   className={`w-full text-left px-5 py-4 border-b border-slate-700/30 transition-all hover:bg-slate-700/30 ${selectedJob?.id === job.id ? 'bg-slate-700/40 border-l-2 border-l-purple-500' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-white text-sm font-medium truncate max-w-[180px]">{job.file_name}</span>
+                    <span className="text-white text-sm font-medium truncate max-w-45">{job.file_name}</span>
                     <StatusBadge status={job.status} />
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500">

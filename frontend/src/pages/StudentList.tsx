@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { getClassById, getClassStudents, enrollStudent, unenrollStudent, type ClassItem, type EnrollmentItem } from '../lib/classApi';
 import ClassForm from '../components/ClassForm';
+import GenerateInvoiceModal from '../components/GenerateInvoiceModal';
+import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -42,6 +44,8 @@ export default function StudentList() {
   const [enrollStudentId, setEnrollStudentId] = useState('');
   const [enrolling, setEnrolling] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const { user } = useAuthStore();
 
   const fetchAll = useCallback(async () => {
     if (!classId) return;
@@ -125,7 +129,7 @@ export default function StudentList() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -158,12 +162,22 @@ export default function StudentList() {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setShowEditForm(true)}
-            className="text-slate-400 hover:text-amber-400 px-4 py-2 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all text-sm"
-          >
-            Edit Class
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setShowEditForm(true)}
+              className="text-slate-400 hover:text-amber-400 px-4 py-2 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all text-sm"
+            >
+              Edit Class
+            </button>
+            {(user?.role === 'admin' || user?.role === 'center_admin') && (
+              <button
+                onClick={() => setShowInvoiceModal(true)}
+                className="text-blue-400 hover:text-blue-300 px-4 py-2 rounded-xl border border-blue-500/30 hover:border-blue-400/50 bg-blue-500/10 transition-all text-sm"
+              >
+                Generate Invoices
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -228,7 +242,7 @@ export default function StudentList() {
                   <td className="px-6 py-3 text-slate-500 text-sm">{i + 1}</td>
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                         {s.student_name?.charAt(0)?.toUpperCase() ?? '?'}
                       </div>
                       <div>
@@ -268,6 +282,18 @@ export default function StudentList() {
           initialData={cls}
           onClose={(refresh) => {
             setShowEditForm(false);
+            if (refresh) fetchAll();
+          }}
+        />
+      )}
+
+      {/* Invoice modal */}
+      {showInvoiceModal && classId && user?.center_id && (
+        <GenerateInvoiceModal
+          classId={classId}
+          centerId={user.center_id}
+          onClose={(refresh) => {
+            setShowInvoiceModal(false);
             if (refresh) fetchAll();
           }}
         />

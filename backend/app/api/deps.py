@@ -45,6 +45,29 @@ async def get_current_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     return user
 
+async def get_current_user_from_token(token: str, db: AsyncSession) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
+    try:
+        payload = decode_token(token)
+        user_id: str | None = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise credentials_exception
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
+    user = result.scalars().first()
+    if user is None or not user.is_active:
+        raise credentials_exception
+    return user
+
 def require_role(allowed_roles: list[str]):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_roles:

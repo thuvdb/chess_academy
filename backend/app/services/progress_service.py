@@ -207,7 +207,7 @@ async def get_leaderboard(
             User.elo_rating.label("rating"),
             func.coalesce(func.sum(StudentProgress.points_earned), 0).label("points"),
             func.count(StudentProgress.id).filter(
-                StudentProgress.status == ProgressStatus.COMPLETED.value
+                StudentProgress.status == ProgressStatus.SOLVED.value
             ).label("puzzles_solved"),
         )
         .outerjoin(StudentProgress, StudentProgress.student_id == User.id)

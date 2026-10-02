@@ -143,7 +143,7 @@ export default function Puzzles() {
 
       {/* Filter and Search Bar */}
       <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex flex-1 min-w-[260px] items-center gap-2 bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2">
+        <div className="flex flex-1 min-w-65 items-center gap-2 bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2">
           <Search className="w-4 h-4 text-slate-400" />
           <input
             type="text"

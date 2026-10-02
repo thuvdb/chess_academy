@@ -35,7 +35,7 @@ class Tournament(UUIDMixin, TimestampMixin, Base):
     )
 
     center_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("centers.id"), nullable=False,
+        UUID(as_uuid=True), ForeignKey("centers.id"), nullable=True,
     )
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False,

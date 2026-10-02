@@ -1,24 +1,23 @@
 {
   "task_id": "CAMS-0007",
   "type": "FEATURE",
-  "state": "INTAKE",
-  "specialists_invoked": [],
+  "state": "DONE",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa"
+  ],
   "gates": {
-    "qa": "PENDING",
-    "security": "PENDING",
+    "qa": "PASS",
+    "security": "PASS",
     "deploy_approval": "N/A"
   },
   "retries": {},
-  "assumptions": [],
-  "handoff": {
-    "triggered_at": "2026-10-01T14:52:00+07:00",
-    "reason": "manual",
-    "resume_prompt": "Develop Sprint 5: Payment & Invoices",
-    "git_state": {
-      "branch": "master",
-      "last_commit": "051823e",
-      "has_uncommitted": "false"
-    }
-  },
-  "updated_at": "2026-10-01T14:52:00+07:00"
+  "assumptions": [
+    "Using MVP Payment Integration (Level 1: VietQR Static Bank Transfer)",
+    "Using 'cams' user and 'chess_academy' DB as standard for backend",
+    "Admins manually verify transfer and update status via API"
+  ],
+  "handoff": null,
+  "updated_at": "2026-10-01T16:25:00+07:00"
 }

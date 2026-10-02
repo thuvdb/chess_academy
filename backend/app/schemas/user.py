@@ -11,9 +11,11 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    center_id: uuid.UUID | None = None
 
 class UserRead(UserBase):
     id: uuid.UUID
+    center_id: uuid.UUID | None = None
     is_active: bool
     elo_rating: int
     avatar_url: str | None = None

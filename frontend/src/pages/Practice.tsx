@@ -280,7 +280,7 @@ export default function Practice() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Chess Board Area */}
         <div className="lg:col-span-7 flex flex-col items-center">
-          <div className="w-full max-w-[500px] aspect-square bg-slate-900 rounded-2xl p-3 shadow-2xl border border-slate-700 relative">
+          <div className="w-full max-w-125 aspect-square bg-slate-900 rounded-2xl p-3 shadow-2xl border border-slate-700 relative">
             <Chessboard
               options={{
                 position: game.fen(),
@@ -328,7 +328,7 @@ export default function Practice() {
           </div>
 
           {/* Turn indicator */}
-          <div className="mt-3 flex items-center justify-between w-full max-w-[500px] text-xs text-slate-400">
+          <div className="mt-3 flex items-center justify-between w-full max-w-125 text-xs text-slate-400">
             <span className="flex items-center gap-2">
               <span
                 className={`w-3 h-3 rounded-full border ${

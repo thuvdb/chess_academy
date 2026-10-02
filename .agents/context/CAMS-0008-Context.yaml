@@ -1,0 +1,38 @@
+task_id: CAMS-0008
+type: FEATURE
+title: Giải đấu Online (Sprint 6)
+objective: >
+  Xây dựng hệ thống giải đấu cờ vua trực tuyến, cho phép tổ chức giải theo thể thức Swiss hoặc Round Robin.
+  Đảm bảo bắt cặp thi đấu, đồng bộ trạng thái ván cờ (bước đi, đồng hồ) qua WebSocket, và cập nhật kết quả/bảng xếp hạng theo thời gian thực.
+source_of_truth:
+  - docs/SDLC.md
+  - docs/03_sprint_plan.md
+affected_modules:
+  - backend/app/models/tournament.py
+  - backend/app/api/endpoints/tournaments.py
+  - backend/app/services/tournament_service.py
+  - backend/app/websocket/game_handler.py
+  - frontend/src/pages/Tournament/
+constraints:
+  - Dùng Redis để lưu game state cho WebSocket nhằm hỗ trợ horizontal scaling.
+  - Hỗ trợ time control (vd: "blitz_5+3").
+  - Xử lý mượt mà khi người chơi reconnect.
+dependencies:
+  - Authentication (đã xong)
+  - Redis (đã có trong infra)
+acceptance_criteria:
+  - Tạo giải đấu thành công (Teacher/Admin).
+  - Học sinh đăng ký giải đấu.
+  - Auto pairing khi giải đấu bắt đầu.
+  - WebSocket truyền nhận nước đi chính xác.
+  - Bảng xếp hạng cập nhật tự động sau mỗi vòng đấu.
+read_only: false
+timeout_seconds: 1800
+max_retries: 2
+model_tier: pro
+expected_output:
+  - files_changed
+  - implementation_summary
+  - tests
+  - risks
+  - unresolved_questions

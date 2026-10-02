@@ -15,11 +15,11 @@ export default function Dashboard() {
   return (
     <div className="p-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-8 relative overflow-hidden">
+      <div className="bg-linear-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-xl shadow-amber-500/30">
+            <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-xl shadow-amber-500/30">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -44,7 +44,7 @@ export default function Dashboard() {
             to={to}
             className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 hover:border-slate-600 transition-all group"
           >
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+            <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
               <Icon className="w-5 h-5 text-white" />
             </div>
             <p className="text-2xl font-bold text-white">{value}</p>

@@ -8,6 +8,7 @@ export interface User {
   role: string;
   avatar_url?: string;
   elo_rating: number;
+  center_id?: string;
 }
 
 interface AuthState {
