@@ -3,8 +3,8 @@ PDF Service — Sprint 3A
 Handles PDF upload, page rendering (300 DPI via PyMuPDF), and storage.
 
 Storage strategy:
-  - Dev/fallback: local filesystem at SCAN_STORAGE_PATH
-  - Production: MinIO (when MINIO_ENABLED=true)
+  - Local filesystem at SCAN_STORAGE_PATH
+  - Files served via HMAC-signed /api/files/... URLs
 """
 
 import os
@@ -26,7 +26,7 @@ MAX_PAGES_PER_SCAN = 50
 
 
 def _save_local(data: bytes, relative_path: str, content_type: str = "application/octet-stream") -> str:
-    """Save bytes to storage (MinIO or local) and return public URL."""
+    """Save bytes to local storage and return URL."""
     return storage_service.save_bytes(data, relative_path, content_type=content_type)
 
 
@@ -107,6 +107,6 @@ async def render_pdf_pages(
 
 def get_local_file_bytes(file_url: str) -> bytes:
     """
-    Retrieve file bytes from storage (MinIO or local filesystem) using URL.
+    Retrieve file bytes from local storage using URL.
     """
     return storage_service.get_file_bytes(file_url)

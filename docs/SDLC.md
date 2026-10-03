@@ -35,7 +35,7 @@
 | Mobile       | React Native (Expo)       | Code sharing iOS/Android         |
 | Database     | PostgreSQL 16             | Quan hệ phức tạp, ACID           |
 | Cache        | Redis 7                   | Session, game state, leaderboard |
-| File Storage | MinIO (S3-compatible)     | PDF, ảnh bàn cờ                  |
+| File Storage | Local Filesystem + HMAC   | PDF, ảnh bàn cờ (S3 future-ready)|
 | AI / CV      | OpenCV + YOLOv8           | Nhận diện bàn cờ                 |
 | Chess Engine | Stockfish + python-chess  | Phân tích nước đi                |
 | Payment      | VNPay / MoMo / VietQR     | Cổng thanh toán Việt Nam         |

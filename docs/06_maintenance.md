@@ -99,12 +99,12 @@ training_data/
 ## 6.4 Kế hoạch Backup & Recovery
 
 ### Backup
-- PostgreSQL: `pg_dump -Fc` (custom format) hàng ngày lúc 2:00 AM → upload MinIO
+- PostgreSQL: `pg_dump -Fc` (custom format) hàng ngày lúc 2:00 AM
   - Daily backup: retention 30 ngày
   - Weekly backup: retention 12 tuần
   - Monthly backup: retention 12 tháng (đáp ứng NFR-06: retention 1 năm)
-- MinIO (PDF, ảnh): replicate sang S3/Cloudflare R2 hàng ngày
-- AI Model files: lưu trên MinIO/S3 model registry
+- File storage (PDF, ảnh): rsync/replicate sang S3/Cloudflare R2 hàng ngày
+- AI Model files: lưu trên S3 model registry
   - Git repo chỉ chứa `model_config.yaml` (version, path, sha256)
   - CI pipeline download model từ registry, verify checksum trước khi test
   - Không dùng Git LFS cho model files (gây chậm clone, tăng repo size)
@@ -116,9 +116,9 @@ training_data/
   ```bash
   # Restore PostgreSQL
   pg_restore -d chess_academy backup_2026-09-20.dump
-  
-  # Restore MinIO
-  mc mirror minio-backup/chess-academy minio/chess-academy
+
+  # Restore file storage
+  rsync -avz backup-server:/storage/ /app/storage/
   ```
 
 ---

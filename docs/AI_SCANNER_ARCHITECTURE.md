@@ -59,7 +59,7 @@ Nhận một trang ảnh PDF → phát hiện bàn cờ → trả về bounding 
 
 ### Input
 ```python
-page_image_url: str  # URL ảnh PNG 300 DPI trên MinIO
+page_image_url: str  # URL ảnh PNG 300 DPI trên local storage
 ```
 
 ### Output
@@ -157,7 +157,7 @@ bounding_box: BoundingBox
 
 ### Output
 ```python
-normalized_board_url: str    # 640×640 PNG trên MinIO
+normalized_board_url: str    # 640×640 PNG trên local storage
 cells: list[CellImage]       # 64 ô, mỗi ô 80×80 px
 # cells[0] = a8, cells[7] = h8, ..., cells[56] = a1, cells[63] = h1
 ```

@@ -24,7 +24,7 @@
            |                  |                 |
 +----------v------------------v-----------------v--------+
 |                    DATABASE LAYER                       |
-|  [PostgreSQL 16]    [Redis 7]    [MinIO Storage]        |
+|  [PostgreSQL 16]    [Redis 7]    [Local Storage]         |
 +----------------------------------------------------------+
 ```
 

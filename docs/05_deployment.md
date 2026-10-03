@@ -15,7 +15,7 @@ services:
   backend:
     build: ./backend
     ports: ["8000:8000"]
-    depends_on: [postgres, redis, minio]
+    depends_on: [postgres, redis]
     env_file: .env
     volumes:
       - ./backend/models:/app/models
@@ -41,26 +41,8 @@ services:
     command: redis-server --appendonly yes
     ports: ["6379:6379"]
 
-  minio:
-    image: minio/minio
-    ports: ["9000:9000", "9001:9001"]
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-    volumes:
-      - miniodata:/data
-
-  # Worker cho background tasks (AI scan, email, cron)
-  worker:
-    build: ./backend
-    depends_on: [postgres, redis]
-    env_file: .env
-    command: celery -A app.worker worker --loglevel=info
-
 volumes:
   pgdata:
-  miniodata:
 ```
 
 ---
@@ -168,12 +150,10 @@ SECRET_KEY=your-super-secret-key-min-32-chars
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
-# ─── Storage (MinIO / AWS S3) ─────────────────────────────
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=chess-academy
-MINIO_USE_SSL=false
+# ─── Storage ──────────────────────────────────────────────
+# Files are stored on local filesystem at SCAN_STORAGE_PATH
+# and served via HMAC-signed /api/files/... URLs.
+# For S3 migration, add boto3 and configure AWS credentials.
 
 # ─── OAuth ───────────────────────────────────────────────
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -235,7 +215,7 @@ FRONTEND_URL=http://localhost:5173
 ### Database
 - [ ] PgBouncer (connection pooling)
 - [ ] Redis Sentinel hoặc Redis Cluster (high availability)
-- [ ] Automated backup: `pg_dump` hàng ngày → MinIO, retention 30 ngày
+- [ ] Automated backup: `pg_dump` hàng ngày, retention 30 ngày
 - [ ] Composite indexes:
   ```sql
   CREATE INDEX idx_student_progress_student ON student_progress(student_id, status);

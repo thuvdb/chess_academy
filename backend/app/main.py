@@ -33,5 +33,5 @@ app.include_router(websocket_router)
 app.include_router(api_router, prefix="/api")
 
 # NOTE: no public static mount for scan files. Files are private and served
-# via short-lived signed URLs (MinIO presigned or /api/files/...).
+# via short-lived HMAC-signed URLs at /api/files/...
 

@@ -1,7 +1,6 @@
 """
 Signed file access — serves private local-storage files only when the URL carries
 a valid, unexpired HMAC signature issued by storage_service.get_access_url().
-(When MinIO is active, presigned MinIO URLs are used instead and this is bypassed.)
 """
 
 import mimetypes

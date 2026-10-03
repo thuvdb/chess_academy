@@ -13,7 +13,7 @@
 - `requirements.txt`: `fastapi uvicorn sqlalchemy alembic asyncpg redis celery[redis] python-chess ultralytics opencv-python pymupdf pydantic python-jose passlib httpx stockfish authlib`
 - Thiết lập FastAPI instance, CORS, logging, environment config (`.env`)
 - Cấu hình Alembic database migrations — chạy migration tạo toàn bộ tables
-- Docker Compose: `backend + worker (Celery) + beat (Celery Beat) + postgres:16 + redis:7 + minio + frontend`
+- Docker Compose: `backend + worker (Celery) + beat (Celery Beat) + postgres:16 + redis:7 + frontend`
 - Environment variables:
   ```env
   CELERY_BROKER_URL=redis://redis:6379/0
@@ -72,7 +72,7 @@
 > **Nguyên tắc:** Test từng bước trước khi chuyển sang bước tiếp theo.
 
 ### Nhiệm vụ
-1. `services/pdf_service.py`: Upload PDF lên MinIO → render từng trang thành PNG 300 DPI (PyMuPDF) → lưu vào MinIO bucket
+1. `services/pdf_service.py`: Upload PDF → render từng trang thành PNG 300 DPI (PyMuPDF) → lưu vào local storage
 2. `services/board_detector.py`:
    - Input: page image URL
    - Dùng OpenCV tìm contour bàn cờ (phát hiện hình vuông lớn nhất)
@@ -96,7 +96,7 @@
    - Perspective Transform (warp perspective)
    - Output: ảnh bàn cờ chuẩn hóa 640×640 px
 2. Cắt lưới 8×8 = 64 ô, mỗi ô 80×80 px
-3. Lưu ảnh các ô vào MinIO (dùng khi cần debug)
+3. Lưu ảnh các ô vào local storage (dùng khi cần debug)
 
 ### Test criteria Sprint 3B
 - Ảnh bàn cờ sau transform phải vuông, không méo
