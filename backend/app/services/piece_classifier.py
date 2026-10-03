@@ -24,7 +24,30 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────
 CHESS_LABELS = {"K", "Q", "R", "B", "N", "P", "k", "q", "r", "b", "n", "p", "empty"}
-MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "chess_yolov8.pt"
+MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "chess_yolov8s.pt"
+
+# Detector label -> FEN letter (supports wP/bK, white-king/black-pawn, and raw FEN letters)
+_COLOR_WORDS = {"white": True, "black": False, "w": True, "b": False}
+_PIECE_WORDS = {
+    "king": "k", "queen": "q", "rook": "r", "bishop": "b", "knight": "n", "pawn": "p",
+    "k": "k", "q": "q", "r": "r", "b": "b", "n": "n", "p": "p",
+}
+DETECT_CONF = 0.25
+
+
+def _label_to_fen(label: str) -> Optional[str]:
+    """Map a detector class name to a FEN letter, or None if unknown."""
+    s = str(label)
+    if s in CHESS_LABELS and s != "empty":
+        return s
+    parts = s.replace("_", "-").lower().split("-")
+    if len(parts) == 2 and parts[0] in _COLOR_WORDS and parts[1] in _PIECE_WORDS:
+        letter = _PIECE_WORDS[parts[1]]
+        return letter.upper() if _COLOR_WORDS[parts[0]] else letter
+    if len(parts) == 1 and len(parts[0]) == 2 and parts[0][0] in ("w", "b") and parts[0][1] in _PIECE_WORDS:
+        letter = _PIECE_WORDS[parts[0][1]]
+        return letter.upper() if parts[0][0] == "w" else letter
+    return None
 
 # CV Heuristic thresholds (tuned on real chess book scans)
 EDGE_DENSITY_THRESHOLD = 0.08   # Canny edge pixel fraction > this -> likely piece present
@@ -50,7 +73,7 @@ def _load_yolo_model():
             "wp", "wq", "wr", "wb", "wn", "wk", "bp", "bq", "br", "bb", "bn", "bk",
         }
         model_labels = set(str(v) for v in names.values())
-        overlap = model_labels & chess_variants
+        overlap = {l for l in model_labels if l in chess_variants or _label_to_fen(l) is not None}
 
         if not overlap:
             logger.warning(
@@ -192,6 +215,52 @@ def classify_cell_yolo(model, cell_image: np.ndarray) -> dict:
         return classify_cell_cv(cell_image, "unknown")
 
 
+def _stitch_board(cells: list[dict]) -> Optional[np.ndarray]:
+    """Rebuild the full rectified board image from its 64 cell images."""
+    try:
+        ch, cw = cells[0]["image"].shape[:2]
+        board = np.zeros((ch * 8, cw * 8, 3), dtype=np.uint8)
+        for c in cells:
+            r, col = int(c["row"]), int(c["col"])
+            board[r * ch:(r + 1) * ch, col * cw:(col + 1) * cw] = c["image"]
+        return board
+    except Exception as exc:
+        logger.warning("Cannot stitch board: %s", exc)
+        return None
+
+
+def _detect_board_pieces(model, cells: list[dict]) -> Optional[dict]:
+    """
+    Whole-board detection: run detector once on the stitched board and map each
+    box centre to a (row, col). Returns {(row, col): (fen_letter, conf)} or None
+    if the model is not a detection model / detection failed.
+    """
+    if getattr(model, "task", None) != "detect":
+        return None
+    board = _stitch_board(cells)
+    if board is None:
+        return None
+    try:
+        res = model.predict(board, conf=DETECT_CONF, verbose=False)[0]
+    except Exception as exc:
+        logger.warning("YOLO board detection error: %s", exc)
+        return None
+
+    h, w = board.shape[:2]
+    found: dict = {}
+    for b in res.boxes:
+        letter = _label_to_fen(res.names.get(int(b.cls), ""))
+        if letter is None:
+            continue
+        x1, y1, x2, y2 = b.xyxy[0].tolist()
+        col = min(7, max(0, int(((x1 + x2) / 2) / (w / 8))))
+        row = min(7, max(0, int(((y1 + y2) / 2) / (h / 8))))
+        conf = float(b.conf)
+        if (row, col) not in found or conf > found[(row, col)][1]:
+            found[(row, col)] = (letter, conf)
+    return found
+
+
 def classify_cells(cells: list[dict]) -> list[dict]:
     """
     Classify all 64 cells from a rectified board.
@@ -205,9 +274,17 @@ def classify_cells(cells: list[dict]) -> list[dict]:
     t0 = time.monotonic()
     model = _get_model()
 
+    detections = _detect_board_pieces(model, cells) if model is not None else None
+
     results = []
     for cell in cells:
-        if model is not None:
+        if detections is not None:
+            hit = detections.get((int(cell["row"]), int(cell["col"])))
+            if hit:
+                prediction = {"piece": hit[0], "confidence": round(hit[1], 4), "method": "yolo"}
+            else:
+                prediction = {"piece": "empty", "confidence": 0.95, "method": "yolo"}
+        elif model is not None:
             prediction = classify_cell_yolo(model, cell["image"])
         else:
             prediction = classify_cell_cv(cell["image"], cell["square"])

@@ -1,40 +1,31 @@
-"""Test CV classifier on page 40 which has actual chess pieces."""
-import sys
-sys.path.insert(0, '/app')
-
+"""Integration test: classify_cells (YOLO whole-board) + build_fen_from_grid trên board thật."""
 import cv2
-import importlib
-import app.services.piece_classifier as clf_module
+import chess
+from app.services.board_rectifier import _slice_cells
+from app.services.piece_classifier import classify_cells, _get_model
+from app.services.fen_builder import build_fen_from_grid
 
-importlib.reload(clf_module)
-clf_module._model = None
-clf_module._model_loaded = False
+JID = "68ba94bd-b14b-40a1-8911-840ff1246794"
+EXPECTED = {
+    # page040_board00 đọc bằng mắt từ ảnh diagram
+    "page040_board00": "4R3/kp4p1/P1p5/5Q2/2q2r2/P7/7P/7K",
+}
 
-# Test page 3 (all empty) and page 40 (has pieces)
-for page_file, label in [
-    ('page003_board00_rectified.png', 'Page 3 Board 0 (likely all empty)'),
-    ('page040_board00_rectified.png', 'Page 40 Board 0 (should have pieces)'),
-]:
-    img_path = f'/app/storage/scans/68ba94bd-b14b-40a1-8911-840ff1246794/boards/{page_file}'
-    img = cv2.imread(img_path)
-    if img is None:
-        print(f'Cannot read {page_file}')
-        continue
-
-    cells = []
-    cell_size = 80
-    files = 'abcdefgh'
-    ranks = '87654321'
-    for row in range(8):
-        for col in range(8):
-            y1 = row * cell_size
-            x1 = col * cell_size
-            cell_img = img[y1:y1+cell_size, x1:x1+cell_size]
-            cells.append({'square': files[col]+ranks[row], 'row': row, 'col': col, 'image': cell_img})
-
-    results = clf_module.classify_cells(cells)
-    non_empty = [r for r in results if r['piece'] != 'empty']
-    print(f'\n{label}:')
-    print(f'  Non-empty cells: {len(non_empty)}/64')
-    for r in non_empty:
-        print(f"    {r['square']}: {r['piece']} conf={r['confidence']:.2f}")
+assert _get_model() is not None, "YOLO model KHÔNG load được"
+fails = 0
+for name in ("page040_board00", "page003_board00", "page010_board02", "page060_board03"):
+    img = cv2.imread(f"/app/storage/scans/{JID}/boards/{name}_rectified.png")
+    cells = classify_cells(_slice_cells(img))
+    data = build_fen_from_grid(cells)
+    fen = data.get("fen_candidate")
+    print(name, fen, data.get("validation"), data.get("errors"))
+    placement = fen.split()[0] if fen else ""
+    try:
+        chess.Board(fen + " w - - 0 1" if " " not in fen else fen)
+    except Exception as e:
+        print("  invalid FEN:", e)
+    if name in EXPECTED and placement != EXPECTED[name]:
+        print("  FAIL expected", EXPECTED[name])
+        fails += 1
+print("FAILS:", fails)
+raise SystemExit(1 if fails else 0)

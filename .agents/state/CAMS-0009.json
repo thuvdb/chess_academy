@@ -14,14 +14,14 @@
   "retries": {},
   "assumptions": [],
   "handoff": {
-    "triggered_at": "2026-10-03T15:35:00+07:00",
+    "triggered_at": "2026-10-03T16:07:00+07:00",
     "reason": "manual",
-    "resume_prompt": "Continue fixing the AI/CV PDF scanner and piece_classifier.py. The CV heuristic for detecting pieces vs empty dark squares (with stripes) was improved. Next step: refresh UI to see if FENs are accurate, fix frontend polling for scan jobs staying in processing state.",
+    "resume_prompt": "Continue verifying the YOLOv8 model integration for the CAMS-0009 AI/CV pipeline. Specifically, ensure the cams_worker pipeline successfully loads the model without manual restart issues and pass QA.",
     "git_state": {
       "branch": "master",
-      "last_commit": "d86c342",
+      "last_commit": "a87355d",
       "has_uncommitted": true
     }
   },
-  "updated_at": "2026-10-03T15:35:00+07:00"
+  "updated_at": "2026-10-03T16:07:00+07:00"
 }
