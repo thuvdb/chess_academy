@@ -136,7 +136,15 @@ async def get_standings(
         .where(TournamentStanding.tournament_id == id)
         .order_by(TournamentStanding.points.desc())
     )
-    return result.scalars().all()
+    standings = result.scalars().all()
+    # Enrich with student name
+    enriched = []
+    for s in standings:
+        data = TournamentStandingRead.model_validate(s)
+        if hasattr(s, 'student') and s.student:
+            data.student_name = s.student.full_name or s.student.email
+        enriched.append(data)
+    return enriched
 
 
 @router.get("/{id}/games", response_model=List[TournamentGameRead])
@@ -151,4 +159,14 @@ async def get_games(
         query = query.where(TournamentGame.round == round_num)
     
     result = await db.execute(query)
-    return result.scalars().all()
+    games = result.scalars().all()
+    # Enrich with player names
+    enriched = []
+    for g in games:
+        data = TournamentGameRead.model_validate(g)
+        if hasattr(g, 'white_player') and g.white_player:
+            data.white_player_name = g.white_player.full_name or g.white_player.email
+        if hasattr(g, 'black_player') and g.black_player:
+            data.black_player_name = g.black_player.full_name or g.black_player.email
+        enriched.append(data)
+    return enriched

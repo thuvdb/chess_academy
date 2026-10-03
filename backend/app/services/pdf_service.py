@@ -16,20 +16,16 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Local storage path (dev fallback)
-SCAN_STORAGE_PATH = Path(os.getenv("SCAN_STORAGE_PATH", "/tmp/cams_scans"))
-SCAN_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+from app.services import storage_service
 
-# Public base URL for serving stored files
-STORAGE_BASE_URL = os.getenv("STORAGE_BASE_URL", "http://localhost:8000/scans")
+# Re-export storage constants for compatibility
+SCAN_STORAGE_PATH = storage_service.SCAN_STORAGE_PATH
+STORAGE_BASE_URL = storage_service.STORAGE_BASE_URL
 
 
-def _save_local(data: bytes, relative_path: str) -> str:
-    """Save bytes to local storage and return public URL."""
-    full_path = SCAN_STORAGE_PATH / relative_path
-    full_path.parent.mkdir(parents=True, exist_ok=True)
-    full_path.write_bytes(data)
-    return f"{STORAGE_BASE_URL}/{relative_path}"
+def _save_local(data: bytes, relative_path: str, content_type: str = "application/octet-stream") -> str:
+    """Save bytes to storage (MinIO or local) and return public URL."""
+    return storage_service.save_bytes(data, relative_path, content_type=content_type)
 
 
 async def save_pdf(file_bytes: bytes, filename: str, job_id: str) -> tuple[str, int]:
@@ -40,7 +36,7 @@ async def save_pdf(file_bytes: bytes, filename: str, job_id: str) -> tuple[str, 
         (file_url, file_size_bytes)
     """
     relative = f"{job_id}/source/{filename}"
-    url = _save_local(file_bytes, relative)
+    url = _save_local(file_bytes, relative, content_type="application/pdf")
     logger.info("Saved PDF: %s (%d bytes)", relative, len(file_bytes))
     return url, len(file_bytes)
 
@@ -103,11 +99,6 @@ async def render_pdf_pages(
 
 def get_local_file_bytes(file_url: str) -> bytes:
     """
-    Retrieve file bytes from local storage using URL.
-    Strips the base URL prefix to get the relative path.
+    Retrieve file bytes from storage (MinIO or local filesystem) using URL.
     """
-    relative = file_url.replace(STORAGE_BASE_URL + "/", "")
-    full_path = SCAN_STORAGE_PATH / relative
-    if not full_path.exists():
-        raise FileNotFoundError(f"File not found: {full_path}")
-    return full_path.read_bytes()
+    return storage_service.get_file_bytes(file_url)

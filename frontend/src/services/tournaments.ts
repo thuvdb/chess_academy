@@ -14,6 +14,7 @@ export interface Tournament {
 export interface TournamentStanding {
   id: string;
   student_id: string;
+  student_name?: string;
   points: number;
   wins: number;
   draws: number;
@@ -27,6 +28,8 @@ export interface TournamentGame {
   round: number;
   white_player_id: string;
   black_player_id: string;
+  white_player_name?: string;
+  black_player_name?: string;
   result: string;
   pgn?: string;
   time_control?: string;

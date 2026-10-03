@@ -36,7 +36,7 @@ ALLOWED_TYPES = {"application/pdf", "application/x-pdf"}
 @router.post("/upload", response_model=ScanJobRead, status_code=status.HTTP_202_ACCEPTED)
 async def upload_pdf(
     file: UploadFile = File(...),
-    center_id: str = Form(...),
+    center_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -55,10 +55,32 @@ async def upload_pdf(
     if len(file_bytes) == 0:
         raise HTTPException(400, detail="Empty file")
 
-    try:
-        center_uuid = uuid.UUID(center_id)
-    except ValueError:
-        raise HTTPException(400, detail="Invalid center_id")
+    target_center_id: uuid.UUID | None = None
+    if center_id and center_id.strip():
+        try:
+            target_center_id = uuid.UUID(center_id.strip())
+        except ValueError:
+            raise HTTPException(400, detail="Invalid center_id")
+
+    # If center_id not provided, try user's center_id
+    if not target_center_id and current_user.center_id:
+        target_center_id = current_user.center_id
+
+    # Verify center exists or fallback to first available center
+    from sqlalchemy import select
+    from app.models.center import Center
+
+    resolved_center_id: uuid.UUID | None = None
+    if target_center_id:
+        res = await db.execute(select(Center.id).where(Center.id == target_center_id))
+        resolved_center_id = res.scalar_one_or_none()
+
+    if not resolved_center_id:
+        res = await db.execute(select(Center.id).limit(1))
+        resolved_center_id = res.scalar_one_or_none()
+
+    if not resolved_center_id:
+        raise HTTPException(400, detail="No active center found in database. Please configure a center first.")
 
     # Save PDF to storage
     file_url, file_size = await pdf_service.save_pdf(
@@ -68,7 +90,7 @@ async def upload_pdf(
     # Create DB record
     job = await scan_service.create_scan_job(
         db=db,
-        center_id=center_uuid,
+        center_id=resolved_center_id,
         uploaded_by=current_user.id,
         file_name=file.filename or "upload.pdf",
         file_url=file_url,

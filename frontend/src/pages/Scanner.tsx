@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, Search, CheckCircle, XCircle, AlertTriangle, FileText, Loader2, RefreshCw, Eye } from 'lucide-react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 // ── Types ──────────────────────────────────────────────────
 interface ScanJob {
@@ -55,6 +56,7 @@ function StatusBadge({ status }: { status: string }) {
 
 
 export default function Scanner() {
+  const { user } = useAuthStore();
   const [jobs, setJobs] = useState<ScanJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<ScanJob | null>(null);
   const [results, setResults] = useState<ScanResult[]>([]);
@@ -111,8 +113,10 @@ export default function Scanner() {
     try {
       const form = new FormData();
       form.append('file', file);
-      // Use a placeholder center_id for now
-      form.append('center_id', '00000000-0000-0000-0000-000000000001');
+      // Append user's center_id if assigned; otherwise backend defaults for super_admin
+      if (user?.center_id) {
+        form.append('center_id', user.center_id);
+      }
 
       const { data } = await api.post('/scan/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },

@@ -14,14 +14,14 @@
   "retries": {},
   "assumptions": [],
   "handoff": {
-    "triggered_at": "2026-10-02T08:59:06+07:00",
+    "triggered_at": "2026-10-03T15:35:00+07:00",
     "reason": "manual",
-    "resume_prompt": "Continue with the LiveGame and Tournament bugfixes if any remain, or mark CAMS-0009 as DONE and move to the next task.",
+    "resume_prompt": "Continue fixing the AI/CV PDF scanner and piece_classifier.py. The CV heuristic for detecting pieces vs empty dark squares (with stripes) was improved. Next step: refresh UI to see if FENs are accurate, fix frontend polling for scan jobs staying in processing state.",
     "git_state": {
       "branch": "master",
-      "last_commit": "3da10b0",
+      "last_commit": "d86c342",
       "has_uncommitted": true
     }
   },
-  "updated_at": "2026-10-02T08:59:06+07:00"
+  "updated_at": "2026-10-03T15:35:00+07:00"
 }

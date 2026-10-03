@@ -67,6 +67,8 @@ class TournamentGameRead(BaseModel):
     round: int
     white_player_id: UUID
     black_player_id: UUID
+    white_player_name: Optional[str] = None
+    black_player_name: Optional[str] = None
     result: str
     pgn: Optional[str] = None
     time_control: Optional[str] = None
@@ -81,6 +83,7 @@ class TournamentStandingRead(BaseModel):
     id: UUID
     tournament_id: UUID
     student_id: UUID
+    student_name: Optional[str] = None
     rank: Optional[int] = None
     points: float
     wins: int

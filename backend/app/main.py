@@ -29,3 +29,9 @@ async def health_check():
 from app.websocket.game_handler import router as websocket_router
 app.include_router(websocket_router)
 app.include_router(api_router, prefix="/api")
+
+from fastapi.staticfiles import StaticFiles
+from app.services.pdf_service import SCAN_STORAGE_PATH
+SCAN_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+app.mount("/scans", StaticFiles(directory=str(SCAN_STORAGE_PATH)), name="scans")
+
