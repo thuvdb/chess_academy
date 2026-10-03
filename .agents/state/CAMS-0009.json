@@ -1,27 +1,50 @@
 {
   "task_id": "CAMS-0009",
   "type": "BUGFIX",
-  "state": "IN_PROGRESS",
+  "state": "VERIFYING",
   "specialists_invoked": [
     "cams-backend",
     "cams-frontend"
   ],
   "gates": {
-    "qa": "PENDING",
-    "security": "PENDING",
+    "qa": "PASS_WITH_WARNINGS",
+    "security": "PENDING_INDEPENDENT_REVIEW",
     "deploy_approval": "N/A"
   },
   "retries": {},
-  "assumptions": [],
+  "assumptions": [
+    "Real scan d8f9be6c: 510 boards / 85 pages, 510 valid FEN, 354s. Accuracy beyond 4 sampled boards not human-verified.",
+    "Security fixes implemented: center-scoping on scan/puzzle endpoints, signed private file URLs, backend/storage untracked + gitignored, PDF page limit (50), exception masking in tasks_scan, prod config validation, infra ports closed.",
+    "fen_builder default castling changed KQkq -> '-' (scan cannot infer castling). Existing test updated to pass castling explicitly + assert new default. Needs product owner confirmation.",
+    "Security gate: author self-review only (access.py, files.py, storage_service.py read through). No independent cams-security specialist run yet, so gate is NOT marked PASS."
+  ],
+  "test_evidence": {
+    "run_at": "2026-10-03T17:03:00Z",
+    "where": "docker exec cams_backend (pytest + pytest-asyncio installed ad hoc in container)",
+    "result": "49 passed, 1 deselected",
+    "deselected": "tests/integration/test_live_game.py::test_live_game (async test without asyncio marker, pre-existing, unrelated)",
+    "excluded": "tests/integration/test_cv_classifier.py is a script that runs at import (SystemExit); not a pytest module",
+    "added": [
+      "tests/test_security_access.py (12 unit tests: center-scoping, path traversal, HMAC signed URL, page limit constant)",
+      "tests/test_security_http.py (21 endpoint tests via TestClient, fake DB/services: cross-center 404 on jobs/results/review/approve/reject, no write on denial, puzzle get/update/delete/create/from-scan scoping, signed /api/files 403/expired/traversal, old /scans mount gone)"
+    ],
+    "limits": "Endpoint tests use faked DB and services; real PostgreSQL queries and the real auth/JWT path are not exercised."
+  },
+  "open_items": [
+    "HTTP tests are not against the real DB/JWT; optional smoke test with real login on dev stack.",
+    "MinIO path (presigned URLs) untested: minio package not installed; local fallback only.",
+    "Page limit enforced at render time only (PDF already stored); upload-time page check not implemented.",
+    "Run independent cams-security review, then move to DONE if PASS."
+  ],
   "handoff": {
-    "triggered_at": "2026-10-03T16:07:00+07:00",
+    "triggered_at": "2026-10-03T16:54:00Z",
     "reason": "manual",
-    "resume_prompt": "Continue verifying the YOLOv8 model integration for the CAMS-0009 AI/CV pipeline. Specifically, ensure the cams_worker pipeline successfully loads the model without manual restart issues and pass QA.",
+    "resume_prompt": "CAMS-0009: security fixes implemented and unit-tested (28 pass). Remaining: independent cams-security review, live endpoint cross-center check, confirm castling default with product owner, then commit.",
     "git_state": {
       "branch": "master",
       "last_commit": "a87355d",
       "has_uncommitted": true
     }
   },
-  "updated_at": "2026-10-03T16:07:00+07:00"
+  "updated_at": "2026-10-03T16:58:30Z"
 }

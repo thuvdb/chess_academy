@@ -7,13 +7,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration
+from app.core.config import settings
+
+# CORS: only the configured domains (CORS_ORIGINS env), never "*" with credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust in production
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 from app.api.api import api_router
@@ -30,8 +32,6 @@ from app.websocket.game_handler import router as websocket_router
 app.include_router(websocket_router)
 app.include_router(api_router, prefix="/api")
 
-from fastapi.staticfiles import StaticFiles
-from app.services.pdf_service import SCAN_STORAGE_PATH
-SCAN_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
-app.mount("/scans", StaticFiles(directory=str(SCAN_STORAGE_PATH)), name="scans")
+# NOTE: no public static mount for scan files. Files are private and served
+# via short-lived signed URLs (MinIO presigned or /api/files/...).
 

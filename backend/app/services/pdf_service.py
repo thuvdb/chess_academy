@@ -22,6 +22,8 @@ from app.services import storage_service
 SCAN_STORAGE_PATH = storage_service.SCAN_STORAGE_PATH
 STORAGE_BASE_URL = storage_service.STORAGE_BASE_URL
 
+MAX_PAGES_PER_SCAN = 50
+
 
 def _save_local(data: bytes, relative_path: str, content_type: str = "application/octet-stream") -> str:
     """Save bytes to storage (MinIO or local) and return public URL."""
@@ -35,7 +37,8 @@ async def save_pdf(file_bytes: bytes, filename: str, job_id: str) -> tuple[str, 
     Returns:
         (file_url, file_size_bytes)
     """
-    relative = f"{job_id}/source/{filename}"
+    # Never trust client filename for storage path; original name is kept in DB only.
+    relative = f"{job_id}/source/source.pdf"
     url = _save_local(file_bytes, relative, content_type="application/pdf")
     logger.info("Saved PDF: %s (%d bytes)", relative, len(file_bytes))
     return url, len(file_bytes)
@@ -69,6 +72,11 @@ async def render_pdf_pages(
     # Open PDF from bytes
     doc = fitz.open(stream=file_bytes, filetype="pdf")
     total_pages = len(doc)
+    
+    if total_pages > MAX_PAGES_PER_SCAN:
+        doc.close()
+        raise ValueError(f"PDF exceeds maximum allowed pages ({MAX_PAGES_PER_SCAN}). Found {total_pages} pages.")
+
     logger.info("Rendering PDF: %d pages @ %d DPI", total_pages, dpi)
 
     zoom = dpi / 72.0  # PDF default = 72 DPI

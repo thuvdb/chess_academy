@@ -29,7 +29,7 @@ LOW_CONFIDENCE_THRESHOLD = 0.70
 def build_fen_from_grid(
     cell_results: list[dict],
     side_to_move: str = "w",
-    castling: str = "KQkq",
+    castling: str = "-",
     en_passant: str = "-",
     halfmove: int = 0,
     fullmove: int = 1,

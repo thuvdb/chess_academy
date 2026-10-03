@@ -4,7 +4,12 @@ Pydantic schemas for Scan API — Sprint 3A
 
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
+
+
+def _signed(url: str | None) -> str | None:
+    from app.services.storage_service import get_access_url
+    return get_access_url(url)
 
 
 # ── ScanJob ─────────────────────────────────────────────────
@@ -26,6 +31,10 @@ class ScanJobRead(BaseModel):
     updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("file_url")
+    def _ser_file_url(self, v: str) -> str | None:
+        return _signed(v)
 
 
 # ── ScanResult ──────────────────────────────────────────────
@@ -50,6 +59,10 @@ class ScanResultRead(BaseModel):
     puzzle_id: uuid.UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("board_image_url")
+    def _ser_board_image_url(self, v: str | None) -> str | None:
+        return _signed(v)
 
 
 # ── Review Request ──────────────────────────────────────────

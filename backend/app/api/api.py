@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import assignments, auth, classes, fee_plans, invoices, leaderboard, payments, progress, puzzles, scan, tournaments
+from app.api.endpoints import assignments, auth, classes, fee_plans, files, invoices, leaderboard, payments, progress, puzzles, scan, tournaments
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -13,3 +13,4 @@ api_router.include_router(fee_plans.router, prefix="/fee-plans", tags=["fee-plan
 api_router.include_router(invoices.router, prefix="/invoices", tags=["invoices"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(tournaments.router, prefix="/tournaments", tags=["tournaments"])
+api_router.include_router(files.router, prefix="/files", tags=["files"])

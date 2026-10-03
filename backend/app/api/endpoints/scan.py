@@ -8,7 +8,9 @@ PUT  /api/scan/results/{id}/review  → teacher corrects FEN
 POST /api/scan/results/{id}/approve → approve → ready for puzzle creation
 """
 
+import re
 import uuid
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -29,6 +31,13 @@ router = APIRouter()
 # Max upload size: 50 MB
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 ALLOWED_TYPES = {"application/pdf", "application/x-pdf"}
+UPLOAD_ROLES = ("super_admin", "admin", "teacher")
+STAFF_ROLES = UPLOAD_ROLES
+PDF_MAGIC = b"%PDF-"
+READ_CHUNK_BYTES = 1024 * 1024
+
+
+from app.api.access import ensure_scan_job_access
 
 
 # ── Upload ────────────────────────────────────────────────────
@@ -45,15 +54,31 @@ async def upload_pdf(
     Returns a ScanJob in PENDING state immediately.
     Processing is queued as a Celery background task.
     """
+    if current_user.role not in UPLOAD_ROLES:
+        raise HTTPException(403, detail="Only admins and teachers can upload PDFs")
+
     # Validate file type
     if file.content_type not in ALLOWED_TYPES and not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, detail="Only PDF files are accepted")
 
-    file_bytes = await file.read()
-    if len(file_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, detail="File too large (max 50 MB)")
+    # Read in chunks and abort as soon as the size limit is exceeded
+    buf = bytearray()
+    while True:
+        chunk = await file.read(READ_CHUNK_BYTES)
+        if not chunk:
+            break
+        buf.extend(chunk)
+        if len(buf) > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, detail="File too large (max 50 MB)")
+    file_bytes = bytes(buf)
     if len(file_bytes) == 0:
         raise HTTPException(400, detail="Empty file")
+    if not file_bytes.startswith(PDF_MAGIC):
+        raise HTTPException(400, detail="Invalid PDF file")
+
+    # Sanitize original filename (kept for display only, never used as a path)
+    safe_name = Path(file.filename or "upload.pdf").name
+    safe_name = re.sub(r"[^\w.\- ]", "_", safe_name)[:200] or "upload.pdf"
 
     target_center_id: uuid.UUID | None = None
     if center_id and center_id.strip():
@@ -84,7 +109,7 @@ async def upload_pdf(
 
     # Save PDF to storage
     file_url, file_size = await pdf_service.save_pdf(
-        file_bytes, file.filename or "upload.pdf", str(uuid.uuid4())
+        file_bytes, safe_name, str(uuid.uuid4())
     )
 
     # Create DB record
@@ -92,7 +117,7 @@ async def upload_pdf(
         db=db,
         center_id=resolved_center_id,
         uploaded_by=current_user.id,
-        file_name=file.filename or "upload.pdf",
+        file_name=safe_name,
         file_url=file_url,
         file_size=file_size,
     )
@@ -139,6 +164,7 @@ async def get_job(
     job = await scan_service.get_scan_job(db, job_id)
     if not job:
         raise HTTPException(404, detail="Scan job not found")
+    ensure_scan_job_access(job, current_user)
     return job
 
 
@@ -151,6 +177,7 @@ async def get_job_results(
     job = await scan_service.get_scan_job(db, job_id)
     if not job:
         raise HTTPException(404, detail="Scan job not found")
+    ensure_scan_job_access(job, current_user)
     return await scan_service.get_job_results(db, job_id)
 
 
@@ -170,6 +197,9 @@ async def review_result(
     result = await scan_service.get_scan_result(db, result_id)
     if not result:
         raise HTTPException(404, detail="Scan result not found")
+
+    job = await scan_service.get_scan_job(db, result.job_id)
+    ensure_scan_job_access(job, current_user)
 
     await scan_service.update_result_review(
         db=db,
@@ -200,6 +230,9 @@ async def approve_result(
     if not result:
         raise HTTPException(404, detail="Scan result not found")
 
+    job = await scan_service.get_scan_job(db, result.job_id)
+    ensure_scan_job_access(job, current_user)
+
     if result.review_status == ReviewStatus.REJECTED.value:
         raise HTTPException(400, detail="Cannot approve a rejected result")
 
@@ -228,6 +261,9 @@ async def reject_result(
     result = await scan_service.get_scan_result(db, result_id)
     if not result:
         raise HTTPException(404, detail="Scan result not found")
+
+    job = await scan_service.get_scan_job(db, result.job_id)
+    ensure_scan_job_access(job, current_user)
 
     await scan_service.update_result_review(
         db=db,

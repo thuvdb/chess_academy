@@ -165,10 +165,13 @@ async def _process_job_async(job_id: str) -> dict:
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - start) * 1000)
             logger.exception("ScanJob %s failed: %s", job_id, exc)
+            
+            error_msg = str(exc)[:500] if isinstance(exc, ValueError) else "An internal error occurred during PDF processing."
+            
             await scan_service.update_job_status(
                 db, job,
                 status=ScanStatus.FAILED.value,
-                error_message=str(exc)[:500],
+                error_message=error_msg,
                 processing_time_ms=elapsed_ms,
             )
             await db.commit()

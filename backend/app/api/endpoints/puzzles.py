@@ -19,6 +19,8 @@ from app.schemas.puzzle import (
     PuzzleUpdate,
 )
 from app.services import puzzle_service
+from app.api.access import ensure_puzzle_access, ensure_scan_job_access
+from app.services import scan_service
 
 router = APIRouter()
 
@@ -54,6 +56,7 @@ async def get_puzzle(
     puzzle = await puzzle_service.get_puzzle(db, puzzle_id)
     if not puzzle:
         raise HTTPException(status_code=404, detail="Puzzle not found")
+    ensure_puzzle_access(puzzle, current_user, write=False)
     return puzzle
 
 
@@ -67,7 +70,9 @@ async def create_puzzle(
     if current_user.role not in ("super_admin", "admin", "teacher"):
         raise HTTPException(status_code=403, detail="Only teachers can create puzzles")
 
-    if not data.center_id:
+    if current_user.role != "super_admin":
+        data.center_id = current_user.center_id
+    elif not data.center_id:
         data.center_id = current_user.center_id
 
     try:
@@ -96,6 +101,7 @@ async def update_puzzle(
     puzzle = await puzzle_service.get_puzzle(db, puzzle_id)
     if not puzzle:
         raise HTTPException(status_code=404, detail="Puzzle not found")
+    ensure_puzzle_access(puzzle, current_user, write=True)
 
     try:
         updated = await puzzle_service.update_puzzle(db, puzzle, data)
@@ -118,6 +124,7 @@ async def delete_puzzle(
     puzzle = await puzzle_service.get_puzzle(db, puzzle_id)
     if not puzzle:
         raise HTTPException(status_code=404, detail="Puzzle not found")
+    ensure_puzzle_access(puzzle, current_user, write=True)
 
     await puzzle_service.delete_puzzle(db, puzzle)
     await db.commit()
@@ -132,6 +139,13 @@ async def create_puzzle_from_scan(
     """Converts an approved ScanResult to a Puzzle in the library."""
     if current_user.role not in ("super_admin", "admin", "teacher"):
         raise HTTPException(status_code=403, detail="Only teachers can create puzzles from scan")
+
+    # Verify scan result access
+    scan_res = await scan_service.get_scan_result(db, req.scan_result_id)
+    if not scan_res:
+        raise HTTPException(status_code=404, detail="Scan result not found")
+    job = await scan_service.get_scan_job(db, scan_res.job_id)
+    ensure_scan_job_access(job, current_user)
 
     try:
         puzzle = await puzzle_service.create_puzzle_from_scan(

@@ -55,7 +55,7 @@ def test_starting_position():
     print("=" * 60)
 
     cells = make_starting_position()
-    result = build_fen_from_grid(cells)
+    result = build_fen_from_grid(cells, castling="KQkq")
 
     expected_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     print(f"  Generated FEN: {result['fen_candidate']}")
@@ -68,6 +68,11 @@ def test_starting_position():
     assert result["validation"] == "valid", \
         f"Expected valid, got {result['validation']}: {result['errors']}"
     assert len(result["low_confidence_cells"]) == 0
+
+    # Default: castling rights cannot be inferred from a scan -> "-"
+    default_result = build_fen_from_grid(cells)
+    assert default_result["fen_candidate"].split()[2] == "-", \
+        f"Default castling should be '-': {default_result['fen_candidate']}"
 
     print("  [PASS] Starting position FEN")
     return True

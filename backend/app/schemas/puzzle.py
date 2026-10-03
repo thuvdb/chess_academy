@@ -4,7 +4,7 @@ Pydantic schemas for Puzzle API — Sprint 4
 
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 # ── Puzzle Solution ──────────────────────────────────────────
@@ -73,6 +73,11 @@ class PuzzleRead(PuzzleBase):
     solutions: list[PuzzleSolutionRead] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("board_image_url")
+    def _ser_board_image_url(self, v: str | None) -> str | None:
+        from app.services.storage_service import get_access_url
+        return get_access_url(v)
 
 
 class CreatePuzzleFromScanRequest(BaseModel):

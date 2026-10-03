@@ -4,8 +4,16 @@ Loads from .env file and environment variables.
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 import json
+
+_INSECURE_DEFAULTS = {
+    "change-me-in-production",
+    "change-me-in-production-use-openssl-rand-hex-32",
+    "cams_admin123",
+    "cams_secret",
+    "cams_password",
+}
 
 
 class Settings(BaseSettings):
@@ -24,6 +32,8 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v
 
+    API_PUBLIC_URL: str = "http://localhost:8000"
+
     # --- Database ---
     DATABASE_URL: str = "postgresql+asyncpg://cams:cams_secret@localhost:5432/chess_academy"
 
@@ -37,13 +47,6 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-
-    # --- MinIO ---
-    MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET: str = "chess-academy"
-    MINIO_SECURE: bool = False
 
     # --- OAuth ---
     GOOGLE_CLIENT_ID: str = ""
@@ -69,6 +72,22 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
     }
+
+    @model_validator(mode="after")
+    def _reject_insecure_production(self) -> "Settings":
+        """Outside DEBUG mode, refuse to start with default secrets or wildcard CORS."""
+        if self.DEBUG:
+            return self
+        problems = []
+        if self.JWT_SECRET_KEY in _INSECURE_DEFAULTS or len(self.JWT_SECRET_KEY) < 32:
+            problems.append("JWT_SECRET_KEY must be a random value of at least 32 chars")
+        if "*" in self.CORS_ORIGINS:
+            problems.append("CORS_ORIGINS must list real domains, not '*'")
+        if any(p in self.DATABASE_URL for p in _INSECURE_DEFAULTS):
+            problems.append("DATABASE_URL must not contain a default password")
+        if problems:
+            raise ValueError("Insecure production configuration: " + "; ".join(problems))
+        return self
 
 
 settings = Settings()
