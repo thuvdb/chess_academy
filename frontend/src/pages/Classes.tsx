@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, RefreshCw, BookOpen, Users, ChevronRight } from 'lucide-react';
-import { getClasses, deleteClass, type ClassItem } from '../lib/classApi';
+import { getClasses, deleteClass, updateClass, type ClassItem } from '../lib/classApi';
 import ClassForm from '../components/ClassForm';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -40,14 +40,36 @@ export default function Classes() {
 
   useEffect(() => { fetchClasses(); }, [fetchClasses]);
 
-  const handleDelete = async (cls: ClassItem) => {
+  const handleDeactivate = async (cls: ClassItem) => {
     if (!confirm(`Deactivate class "${cls.name}"?`)) return;
     try {
-      await deleteClass(cls.id);
+      await updateClass(cls.id, { is_active: false });
       toast.success('Class deactivated');
       fetchClasses();
-    } catch {
-      toast.error('Failed to deactivate class');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to deactivate class');
+    }
+  };
+
+  const handleActivate = async (cls: ClassItem) => {
+    if (!confirm(`Reactivate class "${cls.name}"?`)) return;
+    try {
+      await updateClass(cls.id, { is_active: true });
+      toast.success('Class activated');
+      fetchClasses();
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to activate class');
+    }
+  };
+
+  const handleHardDelete = async (cls: ClassItem) => {
+    if (!confirm(`Permanently delete class "${cls.name}"? This action cannot be undone.`)) return;
+    try {
+      await deleteClass(cls.id);
+      toast.success('Class deleted permanently');
+      fetchClasses();
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to delete class');
     }
   };
 
@@ -204,12 +226,28 @@ export default function Classes() {
                           >
                             Edit
                           </button>
-                          {cls.is_active && (
+                          {cls.is_active && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'center_admin' || (user?.role === 'teacher' && cls.teacher_id === user.id)) && (
                             <button
-                              onClick={() => handleDelete(cls)}
-                              className="text-xs text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all"
+                              onClick={() => handleDeactivate(cls)}
+                              className="text-xs text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-all"
                             >
                               Deactivate
+                            </button>
+                          )}
+                          {!cls.is_active && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'center_admin' || (user?.role === 'teacher' && cls.teacher_id === user.id)) && (
+                            <button
+                              onClick={() => handleActivate(cls)}
+                              className="text-xs text-slate-400 hover:text-green-400 px-3 py-1.5 rounded-lg hover:bg-green-500/10 transition-all"
+                            >
+                              Activate
+                            </button>
+                          )}
+                          {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'center_admin') && cls.current_students === 0 && (
+                            <button
+                              onClick={() => handleHardDelete(cls)}
+                              className="text-xs text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all"
+                            >
+                              Delete
                             </button>
                           )}
                         </>

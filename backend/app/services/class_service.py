@@ -109,15 +109,30 @@ async def update_class(db: AsyncSession, class_id: uuid.UUID, data: ClassUpdate)
     return await get_class_by_id(db, cls.id)
 
 
-async def delete_class(db: AsyncSession, class_id: uuid.UUID) -> bool:
-    """Soft-delete a class by setting is_active=False."""
+async def delete_class(db: AsyncSession, class_id: uuid.UUID) -> tuple[bool, str]:
+    """Hard-delete a class. Fails if there are active enrollments."""
     result = await db.execute(select(Class).where(Class.id == class_id))
     cls = result.scalar_one_or_none()
     if not cls:
-        return False
-    cls.is_active = False
+        return False, "Class not found"
+
+    # check active students
+    count_q = select(func.count()).select_from(ClassEnrollment).where(
+        ClassEnrollment.class_id == class_id,
+        ClassEnrollment.status == EnrollmentStatus.ACTIVE.value,
+    )
+    count_result = await db.execute(count_q)
+    current_students = count_result.scalar() or 0
+    if current_students > 0:
+        return False, "Cannot delete class with active students. Please unenroll them first."
+
+    # Delete all enrollments (inactive ones)
+    await db.execute(delete(ClassEnrollment).where(ClassEnrollment.class_id == class_id))
+    
+    # Delete the class
+    await db.execute(delete(Class).where(Class.id == class_id))
     await db.flush()
-    return True
+    return True, ""
 
 
 # ==================== Enrollment CRUD ====================

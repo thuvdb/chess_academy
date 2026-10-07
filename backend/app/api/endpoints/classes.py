@@ -91,10 +91,12 @@ async def delete_class(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(["admin", "super_admin"])),
 ):
-    """Soft-delete a class. Admin only."""
-    success = await class_service.delete_class(db, class_id)
+    """Hard-delete a class. Admin only."""
+    success, error = await class_service.delete_class(db, class_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Class not found")
+        if error == "Class not found":
+            raise HTTPException(status_code=404, detail=error)
+        raise HTTPException(status_code=400, detail=error)
     await db.commit()
 
 

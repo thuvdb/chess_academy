@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { createClass, updateClass, type ClassItem, type ClassCreatePayload } from '../lib/classApi';
 import toast from 'react-hot-toast';
+import api from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'tournament'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -27,7 +29,17 @@ export default function ClassForm({ initialData, onClose }: Props) {
     teacher_id: '',
   });
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
+  const { user } = useAuthStore();
+  const [teachers, setTeachers] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.role && user.role !== 'teacher' && user.role !== 'student') {
+      api.get('/users/members?limit=100').then(res => {
+        setTeachers(res.data.filter((u: any) => u.role === 'teacher'));
+      }).catch(err => console.error(err));
+    }
+  }, [user?.role]);
 
   useEffect(() => {
     if (initialData) {
@@ -153,6 +165,23 @@ export default function ClassForm({ initialData, onClose }: Props) {
               />
             </div>
           </div>
+
+          {/* Teacher Assignment (Admin Only) */}
+          {user?.role !== 'teacher' && user?.role !== 'student' && (
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-1.5">Assign Teacher</label>
+              <select
+                value={formData.teacher_id}
+                onChange={e => setFormData(p => ({ ...p, teacher_id: e.target.value }))}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 transition-colors"
+              >
+                <option value="">-- Unassigned --</option>
+                {teachers.map(t => (
+                  <option key={t.id} value={t.id}>{t.full_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Schedule */}
           <div>
