@@ -21,6 +21,7 @@ export default function Assignments() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [classId, setClassId] = useState('');
+  const [filterClassId, setFilterClassId] = useState('');
   const [selectedPuzzles, setSelectedPuzzles] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -87,6 +88,10 @@ export default function Assignments() {
     }
   };
 
+  const filteredAssignments = filterClassId 
+    ? assignments.filter(a => a.class_id === filterClassId)
+    : assignments;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -100,13 +105,27 @@ export default function Assignments() {
             Giao bài tập cho học sinh theo lớp, đặt hạn nộp và theo dõi tiến độ
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition shadow-lg shadow-indigo-600/20"
-        >
-          <Plus className="w-4 h-4" />
-          Giao bài tập mới
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={filterClassId}
+            onChange={(e) => setFilterClassId(e.target.value)}
+            className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
+          >
+            <option value="">Tất cả các lớp</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition shadow-lg shadow-indigo-600/20"
+          >
+            <Plus className="w-4 h-4" />
+            Giao bài tập mới
+          </button>
+        </div>
       </div>
 
       {/* Assignments List */}
@@ -114,17 +133,17 @@ export default function Assignments() {
         <div className="flex justify-center items-center py-24">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
         </div>
-      ) : assignments.length === 0 ? (
+      ) : filteredAssignments.length === 0 ? (
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-12 text-center">
           <ClipboardList className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-slate-300">Chưa có bài tập nào được giao</h3>
+          <h3 className="text-lg font-medium text-slate-300">Không tìm thấy bài tập nào</h3>
           <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-            Bấm nút &quot;Giao bài tập mới&quot; để chọn danh sách thế cờ và giao cho lớp học.
+            Thay đổi bộ lọc hoặc tạo bài tập mới.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assignments.map((item) => (
+          {filteredAssignments.map((item) => (
             <div
               key={item.id}
               className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 hover:border-slate-600 transition flex flex-col justify-between shadow-lg"

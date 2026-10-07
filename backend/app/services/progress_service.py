@@ -93,9 +93,15 @@ async def submit_attempt(
 
     is_correct = False
     if expected_ucis and user_ucis:
-        # Check if the sequence matches the expected sequence
+        # Check if the sequence matches the expected sequence exactly
         if user_ucis[:len(expected_ucis)] == expected_ucis:
             is_correct = True
+        else:
+            # If not exact match, let Stockfish evaluate if it's still a winning move/mate
+            from app.services.stockfish_service import evaluate_alternate_solution
+            if evaluate_alternate_solution(puzzle.fen, user_ucis):
+                is_correct = True
+                
     elif not expected_ucis and user_ucis:
         # If no solutions specified in DB, accept first legal move
         is_correct = True

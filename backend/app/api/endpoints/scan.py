@@ -107,14 +107,17 @@ async def upload_pdf(
     if not resolved_center_id:
         raise HTTPException(400, detail="No active center found in database. Please configure a center first.")
 
+    job_id = uuid.uuid4()
+
     # Save PDF to storage
     file_url, file_size = await pdf_service.save_pdf(
-        file_bytes, safe_name, str(uuid.uuid4())
+        file_bytes, safe_name, str(job_id)
     )
 
     # Create DB record
     job = await scan_service.create_scan_job(
         db=db,
+        id=job_id,
         center_id=resolved_center_id,
         uploaded_by=current_user.id,
         file_name=safe_name,
@@ -166,6 +169,25 @@ async def get_job(
         raise HTTPException(404, detail="Scan job not found")
     ensure_scan_job_access(job, current_user)
     return job
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a scan job and all its physical files and results."""
+    job = await scan_service.get_scan_job(db, job_id)
+    if not job:
+        raise HTTPException(404, detail="Scan job not found")
+    
+    # Only allow the user who uploaded it, or admins/teachers
+    ensure_scan_job_access(job, current_user)
+    
+    await scan_service.delete_scan_job(db, job)
+    await db.commit()
+
 
 
 @router.get("/jobs/{job_id}/results", response_model=list[ScanResultRead])
@@ -233,8 +255,7 @@ async def approve_result(
     job = await scan_service.get_scan_job(db, result.job_id)
     ensure_scan_job_access(job, current_user)
 
-    if result.review_status == ReviewStatus.REJECTED.value:
-        raise HTTPException(400, detail="Cannot approve a rejected result")
+
 
     await scan_service.update_result_review(
         db=db,

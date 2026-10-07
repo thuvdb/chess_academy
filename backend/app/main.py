@@ -35,3 +35,8 @@ app.include_router(api_router, prefix="/api")
 # NOTE: no public static mount for scan files. Files are private and served
 # via short-lived HMAC-signed URLs at /api/files/...
 
+import os
+from fastapi.staticfiles import StaticFiles
+
+os.makedirs("uploads/avatars", exist_ok=True)
+app.mount("/static", StaticFiles(directory="uploads"), name="static")

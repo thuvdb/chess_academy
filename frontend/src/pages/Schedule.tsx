@@ -22,6 +22,7 @@ interface CalendarEvent {
   dayIndex: number;
   hour: number;
   minute: number;
+  endTime?: string;
 }
 
 function parseEvents(classes: ClassItem[]): CalendarEvent[] {
@@ -30,13 +31,15 @@ function parseEvents(classes: ClassItem[]): CalendarEvent[] {
     if (!cls.schedule_json || !cls.is_active) return;
     Object.entries(cls.schedule_json).forEach(([day, times]) => {
       times.forEach(time => {
-        const [hStr, mStr] = time.split(':');
+        const [start, end] = time.split('-');
+        const [hStr, mStr] = start.split(':');
         events.push({
           cls,
           day,
           dayIndex: DAYS_FULL[day] ?? 1,
           hour: parseInt(hStr, 10),
           minute: parseInt(mStr, 10),
+          endTime: end || '',
         });
       });
     });
@@ -158,6 +161,7 @@ export default function Schedule() {
                           <p className="opacity-75 flex items-center gap-1 mt-0.5">
                             <BookOpen className="w-2.5 h-2.5" />
                             {`${ev.hour.toString().padStart(2, '0')}:${ev.minute.toString().padStart(2, '0')}`}
+                            {ev.endTime ? ` - ${ev.endTime}` : ''}
                           </p>
                         </Link>
                       ))}

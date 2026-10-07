@@ -148,7 +148,7 @@
 
 ---
 
-## Sprint 3D — Teacher Review UI (Tuần 10)
+## Sprint 3D — Teacher Review UI (Tuần 10) [DONE]
 
 ### Backend
 - API `GET /api/scan/jobs/{id}/results` — trả danh sách scan_results với cell_confidence

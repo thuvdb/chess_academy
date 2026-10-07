@@ -10,6 +10,7 @@ import Scanner from './pages/Scanner';
 import Puzzles from './pages/Puzzles';
 import Practice from './pages/Practice';
 import Assignments from './pages/Assignments';
+import AssignmentDetail from './pages/AssignmentDetail';
 import Leaderboard from './pages/Leaderboard';
 import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
@@ -18,6 +19,8 @@ import Tournaments from './pages/Tournaments';
 import TournamentDetail from './pages/TournamentDetail';
 import LiveGame from './pages/LiveGame';
 import Invoices from './pages/Invoices';
+import Profile from './pages/Profile';
+import Members from './pages/Members';
 
 function App() {
   return (
@@ -48,12 +51,15 @@ function App() {
             <Route path="/puzzles" element={<Puzzles />} />
             <Route path="/practice" element={<Practice />} />
             <Route path="/assignments" element={<Assignments />} />
+            <Route path="/assignments/:assignmentId" element={<AssignmentDetail />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/fee-plans" element={<FeePlans />} />
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/tournaments" element={<Tournaments />} />
             <Route path="/tournaments/:id" element={<TournamentDetail />} />
             <Route path="/tournaments/:id/game/:gameId" element={<LiveGame />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/members" element={<Members />} />
           </Route>
         </Route>
 

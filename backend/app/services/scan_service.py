@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 async def create_scan_job(
     db: AsyncSession,
+    id: uuid.UUID,
     center_id: uuid.UUID,
     uploaded_by: uuid.UUID,
     file_name: str,
@@ -27,6 +28,7 @@ async def create_scan_job(
 ) -> ScanJob:
     """Create a new ScanJob record in PENDING state."""
     job = ScanJob(
+        id=id,
         center_id=center_id,
         uploaded_by=uploaded_by,
         file_name=file_name,
@@ -93,6 +95,35 @@ async def update_job_status(
         job.error_message = error_message
     if processing_time_ms is not None:
         job.processing_time_ms = processing_time_ms
+    await db.flush()
+
+
+async def delete_scan_job(db: AsyncSession, job: ScanJob) -> None:
+    import shutil
+    from app.services.storage_service import SCAN_STORAGE_PATH
+
+    # Delete physical files
+    # Attempt to delete based on file_url (for old jobs where uuid differed)
+    try:
+        folder_uuid = job.file_url.split("/")[-3]
+        job_dir_1 = SCAN_STORAGE_PATH / folder_uuid
+        if job_dir_1.exists() and job_dir_1.is_dir():
+            shutil.rmtree(job_dir_1)
+            logger.info("Deleted physical scan directory (from URL): %s", job_dir_1)
+    except Exception as e:
+        logger.warning("Failed to delete physical scan directory for job %s: %s", job.id, e)
+
+    # Attempt to delete based on job.id (for new jobs)
+    try:
+        job_dir_2 = SCAN_STORAGE_PATH / str(job.id)
+        if job_dir_2.exists() and job_dir_2.is_dir():
+            shutil.rmtree(job_dir_2)
+            logger.info("Deleted physical scan directory (from job ID): %s", job_dir_2)
+    except Exception as e:
+        logger.warning("Failed to delete physical scan directory for job %s: %s", job.id, e)
+
+    # DB cascading will delete associated scan_results
+    await db.delete(job)
     await db.flush()
 
 

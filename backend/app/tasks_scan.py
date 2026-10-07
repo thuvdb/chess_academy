@@ -39,21 +39,29 @@ def process_scan_job(self, job_id: str) -> dict:
 
 async def _process_job_async(job_id: str) -> dict:
     """Async implementation called from the Celery task."""
-    from app.core.database import async_session_factory
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from sqlalchemy.pool import NullPool
+    from app.core.config import settings
     from app.services import pdf_service, scan_service
     from app.services.board_detector import detect_boards
     from app.services.board_rectifier import rectify_board
     from app.services.piece_classifier import classify_cells
     from app.services.fen_builder import build_fen_from_grid
+    from app.services.turn_detector import TurnDetector
     from app.models.base import ScanStatus
 
     start = time.monotonic()
     logger.info("Processing ScanJob: %s", job_id)
 
-    async with async_session_factory() as db:
+    # Use a local engine and NullPool to avoid asyncio cross-loop issues in Celery tasks
+    engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
+    local_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with local_session_factory() as db:
         job = await scan_service.get_scan_job(db, uuid.UUID(job_id))
         if not job:
             logger.error("ScanJob not found: %s", job_id)
+            await engine.dispose()
             return {"error": "Job not found"}
 
         # Mark as processing
@@ -81,12 +89,29 @@ async def _process_job_async(job_id: str) -> dict:
                     logger.warning("Board detection failed on page %d: %s", page_num, exc)
                     boards = []
 
+                page_text = page.get("text", "").lower()
+                page_default_turn = "w"
+                if "black to move" in page_text or "black to play" in page_text:
+                    page_default_turn = "b"
+
                 # 4. Rectify, classify piece, build FEN + save each detected board
+                turn_detector = TurnDetector()
+                import cv2
+                import numpy as np
+                try:
+                    page_img_cv2 = cv2.imdecode(np.frombuffer(page_img_bytes, np.uint8), cv2.IMREAD_COLOR)
+                except Exception:
+                    page_img_cv2 = None
+                    
                 for board in boards:
                     board_image_url = None
                     fen_candidate = None
                     cell_confidence = None
                     try:
+                        side_to_move = page_default_turn
+                        if page_img_cv2 is not None:
+                            side_to_move = turn_detector.detect_turn(page_img_cv2, board, default_turn=page_default_turn)
+                            
                         rect_result = rectify_board(
                             source_image=page_img_bytes,
                             bounding_box=board,
@@ -100,7 +125,7 @@ async def _process_job_async(job_id: str) -> dict:
 
                         if cells:
                             classified_cells = classify_cells(cells)
-                            fen_data = build_fen_from_grid(classified_cells)
+                            fen_data = build_fen_from_grid(classified_cells, side_to_move=side_to_move)
                             fen_candidate = fen_data.get("fen_candidate")
                             cell_confidence = {
                                 "validation": fen_data.get("validation"),
@@ -155,6 +180,7 @@ async def _process_job_async(job_id: str) -> dict:
                 "ScanJob %s done: %d pages, %d boards in %d ms",
                 job_id, total_pages, total_boards, elapsed_ms,
             )
+            await engine.dispose()
             return {
                 "job_id": job_id,
                 "total_pages": total_pages,
@@ -175,4 +201,6 @@ async def _process_job_async(job_id: str) -> dict:
                 processing_time_ms=elapsed_ms,
             )
             await db.commit()
+            await engine.dispose()
             raise
+

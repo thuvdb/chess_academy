@@ -19,5 +19,23 @@ class UserRead(UserBase):
     is_active: bool
     elo_rating: int
     avatar_url: str | None = None
+    username: str | None = None
+    bio: str | None = None
+    location: str | None = None
+    country: str | None = None
+    language: str | None = None
+    timezone: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    avatar_url: str | None = None
+    phone: str | None = None
+    date_of_birth: date | None = None
+    username: str | None = None
+    bio: str | None = None
+    location: str | None = None
+    country: str | None = None
+    language: str | None = None
+    timezone: str | None = None

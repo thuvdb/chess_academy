@@ -34,10 +34,15 @@ async def list_assignments(
     if current_user.role == "teacher":
         teacher_id = current_user.id
 
+    student_id = None
+    if current_user.role == "student":
+        student_id = current_user.id
+
     return await assignment_service.list_assignments(
         db=db,
         class_id=class_id,
         teacher_id=teacher_id,
+        student_id=student_id,
         skip=skip,
         limit=limit,
     )
@@ -107,3 +112,41 @@ async def delete_assignment(
 
     await assignment_service.delete_assignment(db, assignment)
     await db.commit()
+
+
+@router.get("/{assignment_id}/progress", response_model=list[dict])
+async def get_assignment_progress(
+    assignment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.progress import StudentProgress
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    stmt = (
+        select(StudentProgress)
+        .options(selectinload(StudentProgress.student))
+        .where(StudentProgress.assignment_id == assignment_id)
+    )
+
+    if current_user.role == "student":
+        stmt = stmt.where(StudentProgress.student_id == current_user.id)
+
+    res = await db.execute(stmt)
+    progress_records = res.scalars().all()
+
+    # Convert to dict format to include student name for the frontend without altering base schemas
+    return [
+        {
+            "id": p.id,
+            "student_id": p.student_id,
+            "student_name": p.student.full_name if p.student else "Unknown",
+            "puzzle_id": p.puzzle_id,
+            "status": p.status,
+            "attempts": p.attempts,
+            "points_earned": p.points_earned,
+            "updated_at": p.updated_at,
+        }
+        for p in progress_records
+    ]

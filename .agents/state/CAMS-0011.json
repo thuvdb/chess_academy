@@ -1,0 +1,20 @@
+{
+  "task_id": "CAMS-0011",
+  "type": "FEATURE",
+  "state": "DONE",
+  "specialists_invoked": ["cams-database", "cams-backend", "cams-frontend", "cams-qa", "cams-security"],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": null
+  },
+  "updated_at": "2026-10-05T01:20:00Z"
+}

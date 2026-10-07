@@ -22,7 +22,7 @@ from app.services import storage_service
 SCAN_STORAGE_PATH = storage_service.SCAN_STORAGE_PATH
 STORAGE_BASE_URL = storage_service.STORAGE_BASE_URL
 
-MAX_PAGES_PER_SCAN = 50
+MAX_PAGES_PER_SCAN = 500
 
 
 def _save_local(data: bytes, relative_path: str, content_type: str = "application/octet-stream") -> str:
@@ -95,6 +95,7 @@ async def render_pdf_pages(
             "image_url": url,
             "width": pix.width,
             "height": pix.height,
+            "text": page.get_text("text").lower()
         })
         logger.debug("  Page %d → %dx%d", page_num + 1, pix.width, pix.height)
 

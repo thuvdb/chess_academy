@@ -89,6 +89,9 @@ class PuzzleType(str, enum.Enum):
     OPENING = "opening"
     STRATEGY = "strategy"
     CUSTOM = "custom"
+    MATE_IN_1 = "mate_in_1"
+    MATE_IN_2 = "mate_in_2"
+    MATE_IN_3 = "mate_in_3"
 
 
 class PuzzleSource(str, enum.Enum):

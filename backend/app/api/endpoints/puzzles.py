@@ -151,6 +151,7 @@ async def create_puzzle_from_scan(
         puzzle = await puzzle_service.create_puzzle_from_scan(
             db=db,
             user_id=current_user.id,
+            center_id=current_user.center_id if current_user.role != "super_admin" else None,
             req=req,
         )
         await db.commit()

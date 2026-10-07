@@ -16,7 +16,7 @@ export interface PuzzleItem {
   description?: string | null;
   fen: string;
   pgn?: string | null;
-  difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'master' | string;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'expert' | string;
   puzzle_type?: string;
   source?: string;
   tags?: string[] | null;
@@ -99,6 +99,11 @@ export async function createPuzzle(input: CreatePuzzleInput): Promise<PuzzleItem
   return data;
 }
 
+export async function updatePuzzle(id: string, input: Partial<CreatePuzzleInput>): Promise<PuzzleItem> {
+  const { data } = await api.put(`/puzzles/${id}`, input);
+  return data;
+}
+
 export async function deletePuzzle(id: string): Promise<void> {
   await api.delete(`/puzzles/${id}`);
 }
@@ -123,6 +128,16 @@ export async function getAssignments(params?: {
   limit?: number;
 }): Promise<AssignmentItem[]> {
   const { data } = await api.get('/assignments', { params });
+  return data;
+}
+
+export async function getAssignmentById(id: string): Promise<AssignmentItem> {
+  const { data } = await api.get(`/assignments/${id}`);
+  return data;
+}
+
+export async function getAssignmentProgress(id: string): Promise<any[]> {
+  const { data } = await api.get(`/assignments/${id}/progress`);
   return data;
 }
 

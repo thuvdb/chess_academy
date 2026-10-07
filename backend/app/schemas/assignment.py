@@ -28,10 +28,17 @@ class AssignmentUpdate(BaseModel):
     max_attempts: int | None = None
 
 
+class ClassInfo(BaseModel):
+    id: uuid.UUID
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 class AssignmentRead(AssignmentBase):
     id: uuid.UUID
     teacher_id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    class_: ClassInfo | None = None
 
     model_config = ConfigDict(from_attributes=True)

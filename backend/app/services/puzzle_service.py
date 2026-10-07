@@ -228,6 +228,7 @@ async def delete_puzzle(db: AsyncSession, puzzle: Puzzle) -> None:
 async def create_puzzle_from_scan(
     db: AsyncSession,
     user_id: uuid.UUID,
+    center_id: uuid.UUID | None,
     req: CreatePuzzleFromScanRequest,
 ) -> Puzzle:
     """Converts an approved ScanResult into a Puzzle."""
@@ -241,16 +242,25 @@ async def create_puzzle_from_scan(
     if not target_fen:
         raise ValueError("Scan result has no FEN")
 
+    rating_map = {
+        "easy": 800,
+        "medium": 1200,
+        "hard": 1600,
+    }
+    rating = rating_map.get(req.difficulty, 1200)
+
     puzzle_data = PuzzleCreate(
         title=req.title,
         description=req.description,
         fen=target_fen,
         difficulty=req.difficulty,
         puzzle_type=req.puzzle_type,
-        source=PuzzleSource.BOOK_SCAN.value,
+        source=PuzzleSource.AI_SCANNED.value,
         tags=req.tags,
         board_image_url=scan_res.board_image_url,
         solutions=req.solutions,
+        center_id=center_id,
+        rating=rating,
     )
 
     puzzle = await create_puzzle(db, created_by=user_id, data=puzzle_data)

@@ -219,19 +219,7 @@ export default function Puzzles() {
                     }}
                   />
                 </div>
-                <div className="absolute top-3 left-3 flex gap-2">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                      DIFFICULTY_COLORS[p.difficulty || 'beginner']
-                    }`}
-                  >
-                    {p.difficulty || 'beginner'}
-                  </span>
-                  <span className="bg-slate-800/90 text-amber-400 border border-slate-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
-                    <Star className="w-3 h-3 fill-current" />
-                    {p.rating}
-                  </span>
-                </div>
+
                 <button
                   onClick={(e) => handleDelete(p.id, e)}
                   className="absolute top-3 right-3 p-1.5 bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition"
@@ -247,7 +235,20 @@ export default function Puzzles() {
                   <h3 className="font-semibold text-white group-hover:text-indigo-400 transition line-clamp-1">
                     {p.title}
                   </h3>
-                  <p className="text-slate-400 text-xs mt-1 line-clamp-2">
+                  <div className="flex gap-2 mt-1.5 mb-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold border ${
+                        DIFFICULTY_COLORS[p.difficulty || 'beginner']
+                      }`}
+                    >
+                      {p.difficulty || 'beginner'}
+                    </span>
+                    <span className="bg-slate-800 text-amber-400 border border-slate-700 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+                      <Star className="w-3 h-3 fill-current" />
+                      {p.rating} ELO
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs line-clamp-2">
                     {p.description || 'Không có mô tả chi tiết'}
                   </p>
                 </div>

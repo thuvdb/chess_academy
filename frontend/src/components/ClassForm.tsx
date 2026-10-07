@@ -13,7 +13,8 @@ interface Props {
 
 interface ScheduleSlot {
   day: string;
-  time: string;
+  start_time: string;
+  end_time: string;
 }
 
 export default function ClassForm({ initialData, onClose }: Props) {
@@ -40,23 +41,27 @@ export default function ClassForm({ initialData, onClose }: Props) {
       if (initialData.schedule_json) {
         const parsed: ScheduleSlot[] = [];
         Object.entries(initialData.schedule_json).forEach(([day, times]) => {
-          times.forEach(time => parsed.push({ day, time }));
+          times.forEach(timeStr => {
+            const [start, end] = timeStr.split('-');
+            parsed.push({ day, start_time: start || '', end_time: end || '' });
+          });
         });
         setSlots(parsed);
       }
     }
   }, [initialData]);
 
-  const addSlot = () => setSlots(prev => [...prev, { day: 'Mon', time: '08:00' }]);
+  const addSlot = () => setSlots(prev => [...prev, { day: 'Mon', start_time: '18:00', end_time: '19:30' }]);
   const removeSlot = (i: number) => setSlots(prev => prev.filter((_, idx) => idx !== i));
   const updateSlot = (i: number, field: keyof ScheduleSlot, value: string) =>
     setSlots(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
 
   const buildScheduleJson = (): Record<string, string[]> => {
     const result: Record<string, string[]> = {};
-    slots.forEach(({ day, time }) => {
+    slots.forEach(({ day, start_time, end_time }) => {
       if (!result[day]) result[day] = [];
-      if (!result[day].includes(time)) result[day].push(time);
+      const timeStr = end_time ? `${start_time}-${end_time}` : start_time;
+      if (!result[day].includes(timeStr)) result[day].push(timeStr);
     });
     return result;
   };
@@ -166,22 +171,36 @@ export default function ClassForm({ initialData, onClose }: Props) {
             )}
             <div className="space-y-2">
               {slots.map((slot, i) => (
-                <div key={i} className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
-                  <select
-                    value={slot.day}
-                    onChange={e => updateSlot(i, 'day', e.target.value)}
-                    className="bg-transparent text-white text-sm focus:outline-none cursor-pointer"
-                  >
-                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  <input
-                    type="time"
-                    value={slot.time}
-                    onChange={e => updateSlot(i, 'time', e.target.value)}
-                    className="bg-transparent text-white text-sm focus:outline-none flex-1 cursor-pointer"
-                  />
-                  <button type="button" onClick={() => removeSlot(i)} className="text-slate-500 hover:text-red-400 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
+                <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3">
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+                    <select
+                      value={slot.day}
+                      onChange={e => updateSlot(i, 'day', e.target.value)}
+                      className="bg-slate-700/50 text-white text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer w-28"
+                    >
+                      {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <button type="button" onClick={() => removeSlot(i)} className="sm:hidden text-slate-500 hover:text-red-400 transition-colors p-1">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center flex-1 w-full gap-2 sm:border-l sm:border-slate-700 sm:pl-3">
+                    <input
+                      type="time"
+                      value={slot.start_time}
+                      onChange={e => updateSlot(i, 'start_time', e.target.value)}
+                      className="bg-slate-700/50 text-white text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer flex-1 min-w-[100px]"
+                    />
+                    <span className="text-slate-500 text-xs font-medium">to</span>
+                    <input
+                      type="time"
+                      value={slot.end_time}
+                      onChange={e => updateSlot(i, 'end_time', e.target.value)}
+                      className="bg-slate-700/50 text-white text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer flex-1 min-w-[100px]"
+                    />
+                  </div>
+                  <button type="button" onClick={() => removeSlot(i)} className="hidden sm:block text-slate-500 hover:text-red-400 transition-colors ml-1 p-1">
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}

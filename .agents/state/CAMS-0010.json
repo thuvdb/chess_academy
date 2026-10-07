@@ -1,0 +1,28 @@
+{
+  "task_id": "CAMS-0010",
+  "type": "FEATURE",
+  "state": "VERIFYING",
+  "specialists_invoked": [
+    "cams-architect"
+  ],
+  "gates": {
+    "qa": "PENDING",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [],
+  "test_evidence": {},
+  "open_items": [],
+  "handoff": {
+    "triggered_at": "2026-10-04T01:39:00+07:00",
+    "reason": "manual",
+    "resume_prompt": "Continue with User testing the Teacher Review UI or move to Sprint 4",
+    "git_state": {
+      "branch": "master",
+      "last_commit": "8512cfa chore: mark CAMS-0009 as DONE",
+      "has_uncommitted": "true"
+    }
+  },
+  "updated_at": "2026-10-04T01:39:00+07:00"
+}

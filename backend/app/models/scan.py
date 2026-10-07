@@ -53,7 +53,7 @@ class ScanJob(UUIDMixin, TimestampMixin, Base):
 
     # Relationships
     results: Mapped[list["ScanResult"]] = relationship(
-        back_populates="job", lazy="selectin",
+        back_populates="job", lazy="selectin", cascade="all, delete-orphan"
     )
     uploader: Mapped["User"] = relationship(lazy="selectin")
 

@@ -11,6 +11,8 @@ import {
   Swords,
   Trophy,
   ClipboardList,
+  Users,
+  UserCog,
 } from 'lucide-react';
 
 const navItems = [
@@ -73,18 +75,42 @@ export default function Sidebar() {
             )}
           </NavLink>
         ))}
+        {(user?.role === 'super_admin' || user?.role === 'admin') && (
+          <NavLink
+            to="/members"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group
+               ${isActive
+                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                 : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800'
+               }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Users className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-400' : ''}`} />
+                <span className="flex-1">Members</span>
+                {isActive && <ChevronRight className="w-3.5 h-3.5 text-amber-400" />}
+              </>
+            )}
+          </NavLink>
+        )}
       </nav>
 
       {/* User + Logout */}
       <div className="px-3 pb-4 border-t border-slate-800 pt-4">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-800 mb-2">
+        <div 
+          onClick={() => navigate('/profile')}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-800 mb-2 cursor-pointer hover:bg-slate-700 transition-colors"
+        >
           <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {user?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
+            {user?.avatar_url ? <img src={user.avatar_url} className="w-8 h-8 rounded-full object-cover" /> : user?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-semibold truncate">{user?.full_name}</p>
             <p className="text-slate-400 text-xs capitalize">{user?.role}</p>
           </div>
+          <UserCog className="w-4 h-4 text-slate-400" />
         </div>
         <button
           onClick={handleLogout}

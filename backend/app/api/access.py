@@ -47,6 +47,8 @@ def ensure_puzzle_access(puzzle, user: User, write: bool = False) -> None:
     if user.role == "super_admin":
         return
     if write:
+        if puzzle.created_by == user.id:
+            return
         if is_staff(user) and same_center(user, puzzle.center_id):
             return
     else:

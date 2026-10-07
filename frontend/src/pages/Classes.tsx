@@ -4,6 +4,7 @@ import { Plus, Search, Filter, RefreshCw, BookOpen, Users, ChevronRight } from '
 import { getClasses, deleteClass, type ClassItem } from '../lib/classApi';
 import ClassForm from '../components/ClassForm';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'tournament'];
 const LEVEL_COLORS: Record<string, string> = {
@@ -14,6 +15,7 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 export default function Classes() {
+  const { user } = useAuthStore();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -63,13 +65,15 @@ export default function Classes() {
           <h1 className="text-2xl font-bold text-white">Classes</h1>
           <p className="text-slate-400 text-sm mt-1">Manage all chess classes and enrollments</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40"
-        >
-          <Plus className="w-4 h-4" />
-          New Class
-        </button>
+        {user?.role !== 'student' && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40"
+          >
+            <Plus className="w-4 h-4" />
+            New Class
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -192,19 +196,23 @@ export default function Classes() {
                       >
                         View
                       </Link>
-                      <button
-                        onClick={() => { setEditingClass(cls); setShowForm(true); }}
-                        className="text-xs text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-all"
-                      >
-                        Edit
-                      </button>
-                      {cls.is_active && (
-                        <button
-                          onClick={() => handleDelete(cls)}
-                          className="text-xs text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all"
-                        >
-                          Deactivate
-                        </button>
+                      {user?.role !== 'student' && (
+                        <>
+                          <button
+                            onClick={() => { setEditingClass(cls); setShowForm(true); }}
+                            className="text-xs text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-all"
+                          >
+                            Edit
+                          </button>
+                          {cls.is_active && (
+                            <button
+                              onClick={() => handleDelete(cls)}
+                              className="text-xs text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all"
+                            >
+                              Deactivate
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>

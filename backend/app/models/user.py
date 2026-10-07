@@ -49,6 +49,12 @@ class User(UUIDMixin, TimestampMixin, Base):
     google_id: Mapped[str | None] = mapped_column(String(200))
     facebook_id: Mapped[str | None] = mapped_column(String(200))
     last_login: Mapped[str | None] = mapped_column(DateTime(timezone=True))
+    username: Mapped[str | None] = mapped_column(String(100), unique=True)
+    bio: Mapped[str | None] = mapped_column(String(500))
+    location: Mapped[str | None] = mapped_column(String(200))
+    country: Mapped[str | None] = mapped_column(String(100))
+    language: Mapped[str | None] = mapped_column(String(50))
+    timezone: Mapped[str | None] = mapped_column(String(100))
 
     # Relationships
     center: Mapped["Center"] = relationship(lazy="selectin")

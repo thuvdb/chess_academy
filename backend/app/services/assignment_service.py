@@ -55,6 +55,7 @@ async def list_assignments(
     db: AsyncSession,
     class_id: Optional[uuid.UUID] = None,
     teacher_id: Optional[uuid.UUID] = None,
+    student_id: Optional[uuid.UUID] = None,
     skip: int = 0,
     limit: int = 50,
 ) -> list[Assignment]:
@@ -66,6 +67,10 @@ async def list_assignments(
         stmt = stmt.where(Assignment.class_id == class_id)
     if teacher_id:
         stmt = stmt.where(Assignment.teacher_id == teacher_id)
+    if student_id:
+        stmt = stmt.join(ClassEnrollment, ClassEnrollment.class_id == Assignment.class_id).where(
+            ClassEnrollment.student_id == student_id
+        )
 
     stmt = stmt.order_by(desc(Assignment.created_at)).offset(skip).limit(limit)
     result = await db.execute(stmt)
