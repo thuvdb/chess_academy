@@ -292,7 +292,7 @@ export default function Practice() {
                 boardStyle: {
                   borderRadius: '12px',
                   boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
-                }
+                },
               }}
             />
 

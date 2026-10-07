@@ -36,8 +36,8 @@ class PuzzleBase(BaseModel):
     description: str | None = None
     fen: str = Field(..., max_length=200)
     pgn: str | None = None
-    difficulty: str | None = "easy"
-    puzzle_type: str | None = "tactic"
+    difficulty: str | None = "beginner"
+    puzzle_type: str | None = "tactics"
     source: str | None = "manual_fen"
     tags: list[str] | None = None
     rating: int = 1200
@@ -84,7 +84,7 @@ class CreatePuzzleFromScanRequest(BaseModel):
     scan_result_id: uuid.UUID
     title: str
     description: str | None = None
-    difficulty: str = "medium"
-    puzzle_type: str = "tactic"
+    difficulty: str = "beginner"
+    puzzle_type: str = "tactics"
     tags: list[str] | None = None
     solutions: list[PuzzleSolutionCreate] = []

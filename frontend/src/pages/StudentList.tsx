@@ -9,14 +9,6 @@ import ClassForm from '../components/ClassForm';
 import GenerateInvoiceModal from '../components/GenerateInvoiceModal';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
-import api from '../lib/api';
-
-interface UserItem {
-  id: string;
-  username: string;
-  full_name: string;
-  email: string;
-}
 
 const LEVEL_COLORS: Record<string, string> = {
   beginner: 'bg-green-500/15 text-green-400 border border-green-500/30',
@@ -47,12 +39,9 @@ export default function StudentList() {
 
   const [cls, setCls] = useState<ClassItem | null>(null);
   const [students, setStudents] = useState<EnrollmentItem[]>([]);
-  const [availableStudents, setAvailableStudents] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEnroll, setShowEnroll] = useState(false);
   const [enrollStudentId, setEnrollStudentId] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -62,51 +51,24 @@ export default function StudentList() {
     if (!classId) return;
     setLoading(true);
     try {
-      const promises: any[] = [
+      const [clsRes, stuRes] = await Promise.all([
         getClassById(classId),
-        getClassStudents(classId)
-      ];
-      
-      if (user?.role !== 'student') {
-        promises.push(api.get('/users/members?limit=100'));
-      }
-      
-      const results = await Promise.all(promises);
-      setCls(results[0].data);
-      setStudents(results[1].data);
-      
-      if (user?.role !== 'student' && results[2]) {
-        setAvailableStudents(results[2].data.filter((m: any) => m.role === 'student'));
-      }
+        getClassStudents(classId),
+      ]);
+      setCls(clsRes.data);
+      setStudents(stuRes.data);
     } catch {
       toast.error('Failed to load class details');
     } finally {
       setLoading(false);
     }
-  }, [classId, user?.role]);
+  }, [classId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  useEffect(() => {
-    if (!showEnroll || user?.role === 'student') return;
-    const delayDebounceFn = setTimeout(() => {
-      setIsSearching(true);
-      const url = searchQuery.trim() 
-        ? `/users/members?limit=20&search=${encodeURIComponent(searchQuery.trim())}`
-        : '/users/members?limit=100';
-      api.get(url)
-        .then(res => {
-           setAvailableStudents(res.data.filter((m: any) => m.role === 'student'));
-        })
-        .catch(() => toast.error('Failed to search students'))
-        .finally(() => setIsSearching(false));
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, showEnroll, user?.role]);
-
   const handleEnroll = async () => {
     if (!classId || !enrollStudentId.trim()) {
-      toast.error('Please select a student');
+      toast.error('Please enter a student ID');
       return;
     }
     setEnrolling(true);
@@ -114,7 +76,6 @@ export default function StudentList() {
       await enrollStudent(classId, enrollStudentId.trim());
       toast.success('Student enrolled successfully!');
       setEnrollStudentId('');
-      setSearchQuery('');
       setShowEnroll(false);
       fetchAll();
     } catch (err: unknown) {
@@ -202,14 +163,12 @@ export default function StudentList() {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            {user?.role !== 'student' && (
-              <button
-                onClick={() => setShowEditForm(true)}
-                className="text-slate-400 hover:text-amber-400 px-4 py-2 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all text-sm"
-              >
-                Edit Class
-              </button>
-            )}
+            <button
+              onClick={() => setShowEditForm(true)}
+              className="text-slate-400 hover:text-amber-400 px-4 py-2 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all text-sm"
+            >
+              Edit Class
+            </button>
             {(user?.role === 'admin' || user?.role === 'center_admin') && (
               <button
                 onClick={() => setShowInvoiceModal(true)}
@@ -230,70 +189,33 @@ export default function StudentList() {
             Enrolled Students
             <span className="ml-1 bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">{students.length}</span>
           </h2>
-          {user?.role !== 'student' && (
-            <button
-              onClick={() => setShowEnroll(!showEnroll)}
-              className="flex items-center gap-2 text-sm bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-3 py-2 rounded-xl transition-all"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Student
-            </button>
-          )}
+          <button
+            onClick={() => setShowEnroll(!showEnroll)}
+            className="flex items-center gap-2 text-sm bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-3 py-2 rounded-xl transition-all"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Student
+          </button>
         </div>
 
         {/* Enroll panel */}
         {showEnroll && (
           <div className="px-6 py-4 bg-slate-900/50 border-b border-slate-700 flex items-center gap-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Search by name, email, or username..."
-                value={searchQuery}
-                onChange={e => {
-                  setSearchQuery(e.target.value);
-                  setEnrollStudentId('');
-                }}
-                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-amber-500 transition-colors"
-              />
-              {/* Dropdown */}
-              {!enrollStudentId && (
-                <div className="absolute z-10 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                  {isSearching ? (
-                    <div className="p-4 text-sm text-slate-400 text-center">Searching...</div>
-                  ) : availableStudents.filter(u => !students.some(s => s.student_id === u.id)).length > 0 ? (
-                    availableStudents
-                      .filter(u => !students.some(s => s.student_id === u.id))
-                      .map(u => (
-                        <div
-                          key={u.id}
-                          className="px-4 py-3 text-sm cursor-pointer hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-0"
-                          onClick={() => {
-                            setEnrollStudentId(u.id);
-                            setSearchQuery(`${u.full_name} (${u.email || u.username})`);
-                          }}
-                        >
-                          <div className="text-white font-medium">{u.full_name}</div>
-                          <div className="text-slate-400 text-xs mt-0.5">{u.email || u.username}</div>
-                        </div>
-                      ))
-                  ) : (
-                    <div className="p-4 text-sm text-slate-400 text-center">No un-enrolled students found</div>
-                  )}
-                </div>
-              )}
-            </div>
-            
+            <input
+              type="text"
+              value={enrollStudentId}
+              onChange={e => setEnrollStudentId(e.target.value)}
+              placeholder="Paste Student UUID..."
+              className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-amber-500 transition-colors placeholder-slate-500"
+              onKeyDown={e => e.key === 'Enter' && handleEnroll()}
+            />
             <button
               onClick={handleEnroll}
-              disabled={enrolling || !enrollStudentId}
-              className="flex items-center justify-center min-w-[100px] h-[38px] bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-900 font-semibold px-4 py-2 rounded-xl transition-all text-sm"
+              disabled={enrolling}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-900 font-semibold px-4 py-2 rounded-xl transition-all text-sm"
             >
-              {enrolling ? <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Enroll
-                </>
-              )}
+              {enrolling ? <span className="w-3.5 h-3.5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+              Enroll
             </button>
           </div>
         )}
