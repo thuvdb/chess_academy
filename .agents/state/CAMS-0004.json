@@ -36,8 +36,8 @@
     "resume_prompt": "Task CAMS-0004 (Sprint 2 — Classes & Enrollment) đã hoàn thành. Endpoint cuối còn thiếu GET /api/classes/{class_id}/schedule đã được bổ sung kèm unit test. Toàn bộ checklist Sprint 2 trong docs/03_sprint_plan.md đã đạt. Xem open_items để biết 2 vấn đề pre-existing cần task riêng (tenancy scoping cho classes API, và lệch enum level expert/tournament).",
     "git_state": {
       "branch": "main",
-      "last_commit": "5278c61",
-      "has_uncommitted": true
+      "last_commit": "9c3045e",
+      "has_uncommitted": false
     }
   },
   "updated_at": "2026-10-10T00:00:00+07:00"

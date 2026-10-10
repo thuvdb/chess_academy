@@ -43,7 +43,7 @@
     "resume_prompt": "CAMS-0014 mới ở trạng thái INTAKE. Trước khi implement cần user chốt permission model (xem pending_decisions trong .agents/context/CAMS-0014-Context.yaml): student/parent được xem roster lớp mình hay không, và admin có phải cross-center hay không. Sau khi chốt: Architect → Backend → QA → Security.",
     "git_state": {
       "branch": "main",
-      "last_commit": null,
+      "last_commit": "8cb92cf",
       "has_uncommitted": false
     }
   },

@@ -66,8 +66,8 @@ manual (User requested "resume CAMS-0004")
 
 ## Git State
 - Branch: `main`
-- Last commit: `5278c61 docs: polish and complete README with setup, tech stack, and migration instructions`
-- Uncommitted changes: yes — 4 file code/test + 2 file ledger/handoff đang chờ user xác nhận commit.
+- Last commit: `9c3045e feat(classes): add class schedule endpoint (CAMS-0004)`
+- Uncommitted changes: no
 
 ## Next Action
-Chờ user xác nhận commit. Sau đó Sprint 2 đóng hoàn toàn; ứng viên task kế tiếp: CAMS-0010 (state `VERIFYING`, chờ user test Teacher Review UI) hoặc mở task mới cho tenancy scoping ở Pending Decisions.
+Sprint 2 đã đóng hoàn toàn. Finding tenancy ở Pending Decisions đã được mở thành task riêng **CAMS-0014** (`.agents/state/CAMS-0014.json` + `.agents/context/CAMS-0014-Context.yaml`, commit `8cb92cf`), hiện ở trạng thái `INTAKE` chờ user chốt permission model. Ứng viên task kế tiếp: CAMS-0014 (sau khi có quyết định) hoặc CAMS-0010 (state `VERIFYING`, chờ user test Teacher Review UI).
