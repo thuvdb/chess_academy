@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ClipboardList, Plus, Clock, BookOpen, ChevronRight, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 import {
   getAssignments, createAssignment,
   type AssignmentItem
@@ -11,6 +13,10 @@ import { getClasses, type ClassItem } from '../lib/classApi';
 import { getPuzzles, type PuzzleItem } from '../lib/puzzleApi';
 
 export default function Assignments() {
+  const { user } = useAuthStore();
+  const canCreateAssignment = Boolean(
+    user && ['super_admin', 'admin', 'center_admin', 'teacher'].includes(user.role)
+  );
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [puzzles, setPuzzles] = useState<PuzzleItem[]>([]);
@@ -100,13 +106,15 @@ export default function Assignments() {
             Giao bài tập cho học sinh theo lớp, đặt hạn nộp và theo dõi tiến độ
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition shadow-lg shadow-indigo-600/20"
-        >
-          <Plus className="w-4 h-4" />
-          Giao bài tập mới
-        </button>
+        {canCreateAssignment && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition shadow-lg shadow-indigo-600/20"
+          >
+            <Plus className="w-4 h-4" />
+            Giao bài tập mới
+          </button>
+        )}
       </div>
 
       {/* Assignments List */}
@@ -117,48 +125,61 @@ export default function Assignments() {
       ) : assignments.length === 0 ? (
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-12 text-center">
           <ClipboardList className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-slate-300">Chưa có bài tập nào được giao</h3>
+          <h3 className="text-lg font-medium text-slate-300">Chưa có bài tập nào</h3>
           <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-            Bấm nút &quot;Giao bài tập mới&quot; để chọn danh sách thế cờ và giao cho lớp học.
+            {canCreateAssignment
+              ? 'Bấm nút "Giao bài tập mới" để chọn danh sách thế cờ và giao cho lớp học.'
+              : 'Hiện chưa có bài tập nào được giao cho bạn.'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assignments.map((item) => (
-            <div
-              key={item.id}
-              className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 hover:border-slate-600 transition flex flex-col justify-between shadow-lg"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
-                    Lớp: {item.class_?.name || 'Chung'}
-                  </span>
-                  {item.due_date && (
-                    <span className="text-xs text-amber-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Hạn: {new Date(item.due_date).toLocaleDateString('vi-VN')}
+          {assignments.map((item) => {
+            const isExpired = item.due_date ? new Date(item.due_date) < new Date() : false;
+            return (
+              <div
+                key={item.id}
+                className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 hover:border-slate-600 transition flex flex-col justify-between shadow-lg"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                      Lớp: {item.class_?.name || 'Chung'}
                     </span>
-                  )}
+                    {item.due_date && (
+                      <span className={`text-xs flex items-center gap-1 font-medium ${isExpired ? 'text-red-400' : 'text-amber-400'}`}>
+                        <Clock className="w-3.5 h-3.5" />
+                        Hạn: {new Date(item.due_date).toLocaleDateString('vi-VN')}
+                        {isExpired && <span className="text-[10px] bg-red-500/20 px-1 py-0.5 rounded text-red-300 ml-1">Hết hạn</span>}
+                      </span>
+                    )}
+                  </div>
+                  <Link to={`/assignments/${item.id}`} className="block group">
+                    <h3 className="font-bold text-white text-lg mt-3 group-hover:text-indigo-400 transition-colors">
+                      {item.title}
+                    </h3>
+                  </Link>
+                  <p className="text-slate-400 text-sm mt-1 line-clamp-2">
+                    {item.description || 'Không có mô tả chi tiết'}
+                  </p>
                 </div>
-                <h3 className="font-bold text-white text-lg mt-3">{item.title}</h3>
-                <p className="text-slate-400 text-sm mt-1 line-clamp-2">
-                  {item.description || 'Không có mô tả chi tiết'}
-                </p>
-              </div>
 
-              <div className="mt-5 pt-4 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-indigo-400" />
-                  {item.puzzle_ids?.length || 0} bài tập
-                </span>
-                <span className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer">
-                  Xem chi tiết
-                  <ChevronRight className="w-4 h-4" />
-                </span>
+                <div className="mt-5 pt-4 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+                  <span className="flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4 text-indigo-400" />
+                    {item.puzzle_ids?.length || 0} bài tập
+                  </span>
+                  <Link
+                    to={`/assignments/${item.id}`}
+                    className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    {user?.role === 'student' ? 'Làm bài / Chi tiết' : 'Xem chi tiết'}
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

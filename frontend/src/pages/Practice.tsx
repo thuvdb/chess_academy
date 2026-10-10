@@ -16,6 +16,7 @@ export default function Practice() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const puzzleIdParam = searchParams.get('puzzleId');
+  const assignmentIdParam = searchParams.get('assignmentId');
 
   const [puzzles, setPuzzles] = useState<PuzzleItem[]>([]);
   const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState(0);
@@ -195,6 +196,7 @@ export default function Practice() {
     try {
       const res = await submitPuzzleAttempt({
         puzzle_id: puzzle.id,
+        assignment_id: assignmentIdParam || undefined,
         moves_uci: ucis,
         moves_san: sans,
         time_spent_seconds: timeSeconds,
@@ -354,11 +356,11 @@ export default function Practice() {
       {/* Top Bar */}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => navigate('/puzzles')}
+          onClick={() => navigate(assignmentIdParam ? `/assignments/${assignmentIdParam}` : '/puzzles')}
           className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          Về danh sách bài tập
+          {assignmentIdParam ? 'Về bài tập về nhà' : 'Về danh sách bài tập'}
         </button>
         <div className="flex items-center gap-4 text-sm text-slate-300">
           <span className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 px-3 py-1 rounded-full">
