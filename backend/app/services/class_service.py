@@ -23,6 +23,8 @@ async def get_classes(
     teacher_id: uuid.UUID | None = None,
     is_active: bool | None = None,
     center_id: uuid.UUID | None = None,
+    current_user_id: uuid.UUID | None = None,
+    student_id: uuid.UUID | None = None,
 ):
     """List classes with optional filters."""
     query = select(Class).offset(skip).limit(limit)
@@ -37,6 +39,13 @@ async def get_classes(
         query = query.where(Class.teacher_id == teacher_id)
     if is_active is not None:
         query = query.where(Class.is_active == is_active)
+    if student_id:
+        query = query.join(
+            ClassEnrollment,
+            (ClassEnrollment.class_id == Class.id)
+            & (ClassEnrollment.student_id == student_id)
+            & (ClassEnrollment.status == EnrollmentStatus.ACTIVE.value),
+        )
 
     query = query.order_by(Class.created_at.desc())
     result = await db.execute(query)
@@ -54,10 +63,21 @@ async def get_classes(
 
         teacher_name = c.teacher.full_name if c.teacher else None
 
+        is_enrolled = None
+        if current_user_id:
+            enrolled_q = select(func.count()).select_from(ClassEnrollment).where(
+                ClassEnrollment.class_id == c.id,
+                ClassEnrollment.student_id == current_user_id,
+                ClassEnrollment.status == EnrollmentStatus.ACTIVE.value,
+            )
+            enrolled_result = await db.execute(enrolled_q)
+            is_enrolled = (enrolled_result.scalar() or 0) > 0
+
         enriched.append({
             **{col.name: getattr(c, col.name) for col in c.__table__.columns},
             "current_students": current_students,
             "teacher_name": teacher_name,
+            "is_enrolled": is_enrolled,
         })
 
     return enriched
@@ -141,20 +161,27 @@ async def delete_class(db: AsyncSession, class_id: uuid.UUID) -> tuple[bool, str
 # ==================== Enrollment CRUD ====================
 
 async def get_class_enrollments(
-    db: AsyncSession, class_id: uuid.UUID, include_email: bool = True
+    db: AsyncSession,
+    class_id: uuid.UUID,
+    include_email: bool = True,
+    status: str | None = None,
 ):
-    """List all enrollments for a class.
+    """List all enrollments for a class, with optional status filter.
 
     Args:
         include_email: When False, student_email is always None.
             Used when the caller is a student/parent who should
             not see classmate emails (CAMS-0014 decision 1).
+        status: Optional filter by EnrollmentStatus (e.g. 'active', 'inactive').
     """
     query = (
         select(ClassEnrollment)
         .where(ClassEnrollment.class_id == class_id)
-        .order_by(ClassEnrollment.enrolled_at.desc())
     )
+    if status:
+        query = query.where(ClassEnrollment.status == status)
+
+    query = query.order_by(ClassEnrollment.enrolled_at.desc())
     result = await db.execute(query)
     enrollments = result.scalars().all()
 

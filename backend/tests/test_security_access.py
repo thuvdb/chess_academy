@@ -269,3 +269,26 @@ def test_f1_student_and_parent_hide_email():
     cls = _cls()
     for role in ("student", "parent"):
         assert _include_email(_user(role), cls) is False, f"Expected False for role={role}"
+
+
+def _effective_student_status(current_user, requested_status: str | None) -> str | None:
+    """Mirror endpoint logic for effective_status in list_class_students."""
+    if current_user.role in {"student", "parent"}:
+        return "active"
+    return requested_status
+
+
+def test_student_and_parent_restricted_to_active_classmates():
+    """Students and parents can only see active classmates, even if inactive is requested."""
+    for role in ("student", "parent"):
+        user = _user(role)
+        # Even if they request inactive or all, it must be forced to 'active'
+        assert _effective_student_status(user, None) == "active"
+        assert _effective_student_status(user, "inactive") == "active"
+
+    # Staff can see all or requested status
+    for role in ("admin", "super_admin", "teacher"):
+        user = _user(role)
+        assert _effective_student_status(user, None) is None
+        assert _effective_student_status(user, "inactive") == "inactive"
+

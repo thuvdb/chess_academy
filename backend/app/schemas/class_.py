@@ -37,6 +37,7 @@ class ClassRead(ClassBase):
     updated_at: datetime | None = None
     current_students: int = 0
     teacher_name: str | None = None
+    is_enrolled: bool | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

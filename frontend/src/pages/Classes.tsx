@@ -22,6 +22,19 @@ export default function Classes() {
   const [levelFilter, setLevelFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
+  const isStudent = user?.role === 'student';
+  const [classTab, setClassTab] = useState<'my' | 'all'>(isStudent ? 'my' : 'all');
+
+  const canCreate = Boolean(
+    user && (user.role === 'super_admin' || user.role === 'admin' || user.role === 'center_admin' || user.role === 'teacher')
+  );
+
+  const canManageClass = (cls: ClassItem) => {
+    if (!user) return false;
+    if (user.role === 'super_admin' || user.role === 'admin' || user.role === 'center_admin') return true;
+    if (user.role === 'teacher' && cls.teacher_id === user.id) return true;
+    return false;
+  };
 
   const fetchClasses = useCallback(async () => {
     setLoading(true);
@@ -87,7 +100,7 @@ export default function Classes() {
           <h1 className="text-2xl font-bold text-white">Classes</h1>
           <p className="text-slate-400 text-sm mt-1">Manage all chess classes and enrollments</p>
         </div>
-        {user?.role !== 'student' && (
+        {canCreate && (
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40"
@@ -97,6 +110,24 @@ export default function Classes() {
           </button>
         )}
       </div>
+
+      {/* Student Tab Switcher */}
+      {isStudent && (
+        <div className="flex items-center gap-2 mb-6">
+          <button
+            onClick={() => setClassTab('my')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${classTab === 'my' ? 'bg-amber-500 text-slate-900 font-semibold shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
+          >
+            Lớp của tôi ({classes.filter(c => c.is_enrolled).length})
+          </button>
+          <button
+            onClick={() => setClassTab('all')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${classTab === 'all' ? 'bg-amber-500 text-slate-900 font-semibold shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
+          >
+            Tất cả lớp học ({classes.length})
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
@@ -135,9 +166,9 @@ export default function Classes() {
       {/* Stats Bar */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Total Classes', value: classes.length, icon: BookOpen, color: 'text-blue-400' },
-          { label: 'Active Classes', value: classes.filter(c => c.is_active).length, icon: BookOpen, color: 'text-green-400' },
-          { label: 'Total Enrolled', value: classes.reduce((s, c) => s + c.current_students, 0), icon: Users, color: 'text-amber-400' },
+          { label: isStudent && classTab === 'my' ? 'My Classes' : 'Total Classes', value: (isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).length, icon: BookOpen, color: 'text-blue-400' },
+          { label: 'Active Classes', value: (isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).filter(c => c.is_active).length, icon: BookOpen, color: 'text-green-400' },
+          { label: 'Total Enrolled', value: (isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).reduce((s, c) => s + c.current_students, 0), icon: Users, color: 'text-amber-400' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
             <div className={`${color} p-2 bg-slate-800 rounded-lg`}>
@@ -176,11 +207,16 @@ export default function Classes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {classes.map(cls => (
+              {(isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).map(cls => (
                 <tr key={cls.id} className="hover:bg-slate-700/30 transition-colors group">
                   <td className="px-6 py-4">
-                    <Link to={`/classes/${cls.id}`} className="text-white font-medium hover:text-amber-400 transition-colors flex items-center gap-1">
-                      {cls.name}
+                    <Link to={`/classes/${cls.id}`} className="text-white font-medium hover:text-amber-400 transition-colors flex items-center gap-2">
+                      <span>{cls.name}</span>
+                      {cls.is_enrolled && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium">
+                          Enrolled
+                        </span>
+                      )}
                       <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>
                   </td>
@@ -218,7 +254,7 @@ export default function Classes() {
                       >
                         View
                       </Link>
-                      {user?.role !== 'student' && (
+                      {canManageClass(cls) && (
                         <>
                           <button
                             onClick={() => { setEditingClass(cls); setShowForm(true); }}
@@ -226,7 +262,7 @@ export default function Classes() {
                           >
                             Edit
                           </button>
-                          {cls.is_active && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'center_admin' || (user?.role === 'teacher' && cls.teacher_id === user.id)) && (
+                          {cls.is_active && (
                             <button
                               onClick={() => handleDeactivate(cls)}
                               className="text-xs text-slate-400 hover:text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-all"
@@ -234,7 +270,7 @@ export default function Classes() {
                               Deactivate
                             </button>
                           )}
-                          {!cls.is_active && (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'center_admin' || (user?.role === 'teacher' && cls.teacher_id === user.id)) && (
+                          {!cls.is_active && (
                             <button
                               onClick={() => handleActivate(cls)}
                               className="text-xs text-slate-400 hover:text-green-400 px-3 py-1.5 rounded-lg hover:bg-green-500/10 transition-all"

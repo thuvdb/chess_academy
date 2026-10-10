@@ -15,16 +15,23 @@ import {
   UserCog,
 } from 'lucide-react';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: any;
+  roles?: string[];
+}
+
+const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/classes', label: 'Classes', icon: BookOpen },
   { to: '/schedule', label: 'Schedule', icon: Calendar },
-  { to: '/scanner', label: 'AI Scanner', icon: ScanSearch },
+  { to: '/scanner', label: 'AI Scanner', icon: ScanSearch, roles: ['super_admin', 'admin', 'center_admin', 'teacher'] },
   { to: '/puzzles', label: 'Puzzle Bank', icon: Swords },
   { to: '/practice', label: 'Luyện tập', icon: Swords },
   { to: '/assignments', label: 'Bài tập về nhà', icon: ClipboardList },
   { to: '/leaderboard', label: 'Bảng xếp hạng', icon: Trophy },
-  { to: '/fee-plans', label: 'Fee Plans', icon: ClipboardList },
+  { to: '/fee-plans', label: 'Fee Plans', icon: ClipboardList, roles: ['super_admin', 'admin', 'center_admin'] },
   { to: '/invoices', label: 'Invoices', icon: ClipboardList },
   { to: '/tournaments', label: 'Tournaments', icon: Trophy },
 ];
@@ -37,6 +44,11 @@ export default function Sidebar() {
     logout();
     navigate('/login');
   };
+
+  const visibleNavItems = navItems.filter(item => {
+    if (!item.roles) return true;
+    return user?.role ? item.roles.includes(user.role) : false;
+  });
 
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-slate-900 flex flex-col border-r border-slate-800 z-30">
@@ -53,7 +65,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map(({ to, label, icon: Icon }) => (
+        {visibleNavItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}

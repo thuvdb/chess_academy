@@ -51,7 +51,23 @@ export default function StudentList() {
   const [enrolling, setEnrolling] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [studentTab, setStudentTab] = useState<'active' | 'inactive'>('active');
   const { user } = useAuthStore();
+
+  const canManage = Boolean(
+    user && (
+      user.role === 'super_admin' ||
+      user.role === 'admin' ||
+      user.role === 'center_admin' ||
+      (user.role === 'teacher' && cls?.teacher_id === user.id)
+    )
+  );
+
+  const activeStudents = students.filter(s => s.status === 'active');
+  const inactiveStudents = students.filter(s => s.status === 'inactive');
+  const displayedStudents = canManage
+    ? (studentTab === 'active' ? activeStudents : inactiveStudents)
+    : activeStudents;
 
   const fetchAll = useCallback(async () => {
     if (!classId) return;
@@ -215,13 +231,15 @@ export default function StudentList() {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <button
-              onClick={() => setShowEditForm(true)}
-              className="text-slate-400 hover:text-amber-400 px-4 py-2 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all text-sm"
-            >
-              Edit Class
-            </button>
-            {(user?.role === 'admin' || user?.role === 'center_admin') && (
+            {canManage && (
+              <button
+                onClick={() => setShowEditForm(true)}
+                className="text-slate-400 hover:text-amber-400 px-4 py-2 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all text-sm"
+              >
+                Edit Class
+              </button>
+            )}
+            {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'center_admin') && (
               <button
                 onClick={() => setShowInvoiceModal(true)}
                 className="text-blue-400 hover:text-blue-300 px-4 py-2 rounded-xl border border-blue-500/30 hover:border-blue-400/50 bg-blue-500/10 transition-all text-sm"
@@ -236,18 +254,41 @@ export default function StudentList() {
       {/* Students Section */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-white font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-amber-400" />
-            Enrolled Students
-            <span className="ml-1 bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">{students.length}</span>
-          </h2>
-          <button
-            onClick={() => setShowEnroll(!showEnroll)}
-            className="flex items-center gap-2 text-sm bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-3 py-2 rounded-xl transition-all"
-          >
-            <UserPlus className="w-4 h-4" />
-            Add Student
-          </button>
+          <div className="flex items-center gap-4">
+            <h2 className="text-white font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4 text-amber-400" />
+              Enrolled Students
+              <span className="ml-1 bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">{activeStudents.length}</span>
+            </h2>
+
+            {/* Filter tab for managers */}
+            {canManage && inactiveStudents.length > 0 && (
+              <div className="flex items-center bg-slate-900/60 p-0.5 rounded-lg border border-slate-700/60 text-xs">
+                <button
+                  onClick={() => setStudentTab('active')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${studentTab === 'active' ? 'bg-amber-500/20 text-amber-400 font-medium' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Active ({activeStudents.length})
+                </button>
+                <button
+                  onClick={() => setStudentTab('inactive')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${studentTab === 'inactive' ? 'bg-amber-500/20 text-amber-400 font-medium' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Inactive / Removed ({inactiveStudents.length})
+                </button>
+              </div>
+            )}
+          </div>
+
+          {canManage && (
+            <button
+              onClick={() => setShowEnroll(!showEnroll)}
+              className="flex items-center gap-2 text-sm bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-3 py-2 rounded-xl transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Student
+            </button>
+          )}
         </div>
 
         {/* Enroll panel — name search */}
@@ -329,10 +370,10 @@ export default function StudentList() {
           </div>
         )}
 
-        {students.length === 0 ? (
+        {displayedStudents.length === 0 ? (
           <div className="text-center py-12 text-slate-500">
             <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p>No students enrolled yet</p>
+            <p>{studentTab === 'active' ? 'No active students enrolled yet' : 'No inactive or removed students'}</p>
           </div>
         ) : (
           <table className="w-full">
@@ -342,11 +383,13 @@ export default function StudentList() {
                 <th className="text-left px-6 py-3 text-slate-400 text-xs font-semibold uppercase tracking-wider">Student</th>
                 <th className="text-left px-6 py-3 text-slate-400 text-xs font-semibold uppercase tracking-wider">Enrolled</th>
                 <th className="text-left px-6 py-3 text-slate-400 text-xs font-semibold uppercase tracking-wider">Status</th>
-                <th className="text-right px-6 py-3 text-slate-400 text-xs font-semibold uppercase tracking-wider">Action</th>
+                {canManage && (
+                  <th className="text-right px-6 py-3 text-slate-400 text-xs font-semibold uppercase tracking-wider">Action</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30">
-              {students.map((s, i) => (
+              {displayedStudents.map((s, i) => (
                 <tr key={s.id} className="hover:bg-slate-700/20 transition-colors">
                   <td className="px-6 py-3 text-slate-500 text-sm">{i + 1}</td>
                   <td className="px-6 py-3">
@@ -356,7 +399,7 @@ export default function StudentList() {
                       </div>
                       <div>
                         <p className="text-white text-sm font-medium">{s.student_name ?? 'Unknown'}</p>
-                        <p className="text-slate-400 text-xs">{s.student_email ?? s.student_id}</p>
+                        {s.student_email && <p className="text-slate-400 text-xs">{s.student_email}</p>}
                       </div>
                     </div>
                   </td>
@@ -368,16 +411,20 @@ export default function StudentList() {
                       {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-right">
-                    {s.status === 'active' && (
-                      <button
-                        onClick={() => handleUnenroll(s)}
-                        className="flex items-center gap-1 text-slate-400 hover:text-red-400 text-xs px-2.5 py-1.5 rounded-lg hover:bg-red-500/10 transition-all ml-auto"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
-                      </button>
-                    )}
-                  </td>
+                  {canManage && (
+                    <td className="px-6 py-3 text-right">
+                      {s.status === 'active' ? (
+                        <button
+                          onClick={() => handleUnenroll(s)}
+                          className="flex items-center gap-1 text-slate-400 hover:text-red-400 text-xs px-2.5 py-1.5 rounded-lg hover:bg-red-500/10 transition-all ml-auto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-500 italic">Removed</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -13,6 +13,7 @@ export interface ClassItem {
   center_id: string | null;
   branch_id: string | null;
   created_at: string;
+  is_enrolled?: boolean;
 }
 
 export interface EnrollmentItem {
@@ -48,6 +49,8 @@ export const getClasses = (params?: {
   limit?: number;
   level?: string;
   search?: string;
+  teacher_id?: string;
+  student_id?: string;
   is_active?: boolean;
 }) => api.get<ClassItem[]>('/classes', { params });
 
@@ -68,8 +71,8 @@ export const deleteClass = (id: string) =>
   api.delete(`/classes/${id}`);
 
 // Get students in class
-export const getClassStudents = (classId: string) =>
-  api.get<EnrollmentItem[]>(`/classes/${classId}/students`);
+export const getClassStudents = (classId: string, status?: string) =>
+  api.get<EnrollmentItem[]>(`/classes/${classId}/students`, { params: status ? { status } : undefined });
 
 // Enroll student
 export const enrollStudent = (classId: string, studentId: string) =>
