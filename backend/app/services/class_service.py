@@ -237,3 +237,57 @@ async def unenroll_student(
     enrollment.status = EnrollmentStatus.INACTIVE.value
     await db.flush()
     return True
+
+
+# ==================== Schedule ====================
+
+WEEKDAY_ORDER = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6}
+
+
+def normalize_schedule_slots(schedule_json: dict | None) -> list[dict]:
+    """Flatten a class's schedule_json into a sorted, de-duplicated slot list.
+
+    Accepts the shape written by the frontend ({"Mon": ["17:00", "19:00"]}) and
+    tolerates a bare string instead of a list. Unknown day keys are kept, sorted
+    after the known weekdays, so nothing stored is silently dropped.
+    """
+    if not isinstance(schedule_json, dict):
+        return []
+
+    slots = []
+    seen = set()
+    for day, times in schedule_json.items():
+        if isinstance(times, str):
+            times = [times]
+        if not isinstance(times, (list, tuple)):
+            continue
+        for time in times:
+            if not isinstance(time, str) or not time.strip():
+                continue
+            slot = (str(day), time.strip())
+            if slot in seen:
+                continue
+            seen.add(slot)
+            slots.append({"day": slot[0], "time": slot[1]})
+
+    slots.sort(key=lambda s: (
+        WEEKDAY_ORDER.get(s["day"], len(WEEKDAY_ORDER)),
+        s["day"],
+        s["time"],
+    ))
+    return slots
+
+
+async def get_class_schedule(db: AsyncSession, class_id: uuid.UUID):
+    """Get the weekly schedule for a single class."""
+    cls = await get_class_by_id(db, class_id)
+    if not cls:
+        return None
+
+    return {
+        "class_id": cls["id"],
+        "name": cls["name"],
+        "level": cls["level"],
+        "teacher_name": cls["teacher_name"],
+        "slots": normalize_schedule_slots(cls["schedule_json"]),
+    }

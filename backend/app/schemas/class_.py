@@ -61,3 +61,18 @@ class EnrollmentRead(BaseModel):
 
 class EnrollmentUpdate(BaseModel):
     status: str
+
+
+# ---------- Schedule Schemas ----------
+
+class ClassScheduleSlot(BaseModel):
+    day: str
+    time: str
+
+
+class ClassScheduleRead(BaseModel):
+    class_id: uuid.UUID
+    name: str
+    level: str | None = None
+    teacher_name: str | None = None
+    slots: list[ClassScheduleSlot] = []

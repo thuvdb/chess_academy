@@ -1,31 +1,44 @@
 {
   "task_id": "CAMS-0004",
   "type": "FEATURE",
-  "state": "IN_PROGRESS",
+  "state": "DONE",
   "specialists_invoked": [
     "cams-backend",
     "cams-frontend",
-    "cams-database"
+    "cams-database",
+    "cams-qa",
+    "cams-security"
   ],
   "gates": {
-    "qa": "PENDING",
-    "security": "PENDING",
+    "qa": "PASS",
+    "security": "PASS",
     "deploy_approval": "N/A"
   },
   "retries": {},
   "assumptions": [
     "Triển khai Sprint 2: Classes & Enrollment theo docs/03_sprint_plan.md",
-    "Tạm hoãn bước kiểm thử mobile của Sprint 1, tập trung vào Backend API và Web UI cho lớp học và tuyển sinh"
+    "Tạm hoãn bước kiểm thử mobile của Sprint 1, tập trung vào Backend API và Web UI cho lớp học và tuyển sinh",
+    "Phần lớn Sprint 2 đã hoàn thành ở các phiên trước (commit d4d6e1f); phiên này chỉ còn thiếu endpoint 'API lấy lịch học theo lớp'",
+    "Scope được user chốt là 'endpoint only': thêm GET /api/classes/{class_id}/schedule, KHÔNG mở rộng thành dated sessions và KHÔNG refactor Schedule.tsx (vẫn tự dựng calendar client-side từ getClasses)"
+  ],
+  "test_evidence": {
+    "unit": "backend/tests/test_class_schedule.py — 5/5 test groups PASS (11 assertions: sorting Mon→Sun, loose/None/non-dict input, dedupe, unknown day keys, schema validation, route mounting)",
+    "contract": "OpenAPI spec verified: GET /api/classes/{class_id}/schedule → ClassScheduleRead {class_id, name, level, teacher_name, slots[{day,time}]}",
+    "regression": "tests/test_puzzle_service.py PASS, tests/test_fen_builder.py PASS — app.main imports clean, no route shadowing"
+  },
+  "open_items": [
+    "PRE-EXISTING (không thuộc scope CAMS-0004): toàn bộ read endpoints của module classes không scope theo center/branch — mọi user đã đăng nhập đọc được bất kỳ lớp nào qua UUID. Đáng lưu ý nhất là GET /api/classes/{class_id}/students trả student_name + student_email cho cả role student/parent. Cần task riêng để siết tenancy/authorization.",
+    "PRE-EXISTING (cosmetic): ClassLevel enum có 'expert' nhưng LEVEL_COLORS ở frontend (Schedule.tsx, Classes.tsx) dùng 'tournament' — lớp level 'expert' sẽ rơi về màu mặc định."
   ],
   "handoff": {
-    "triggered_at": "2026-10-03T15:35:00+07:00",
+    "triggered_at": "2026-10-10T00:00:00+07:00",
     "reason": "manual",
-    "resume_prompt": "Tiếp tục triển khai Sprint 2 (Classes & Enrollment). Đọc .agents/handoff/CAMS-0004-handoff.md và docs/03_sprint_plan.md để thực hiện Backend CRUD /api/classes và Frontend màn hình quản lý lớp.",
+    "resume_prompt": "Task CAMS-0004 (Sprint 2 — Classes & Enrollment) đã hoàn thành. Endpoint cuối còn thiếu GET /api/classes/{class_id}/schedule đã được bổ sung kèm unit test. Toàn bộ checklist Sprint 2 trong docs/03_sprint_plan.md đã đạt. Xem open_items để biết 2 vấn đề pre-existing cần task riêng (tenancy scoping cho classes API, và lệch enum level expert/tournament).",
     "git_state": {
-      "branch": "master",
-      "last_commit": "d86c342",
+      "branch": "main",
+      "last_commit": "5278c61",
       "has_uncommitted": true
     }
   },
-  "updated_at": "2026-10-03T15:35:00+07:00"
+  "updated_at": "2026-10-10T00:00:00+07:00"
 }

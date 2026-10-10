@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.class_ import (
     ClassCreate, ClassUpdate, ClassRead,
     EnrollmentCreate, EnrollmentRead,
+    ClassScheduleRead,
 )
 from app.services import class_service
 
@@ -146,3 +147,18 @@ async def unenroll_student(
     if not success:
         raise HTTPException(status_code=404, detail="Enrollment not found")
     await db.commit()
+
+
+# ==================== Schedule Endpoints ====================
+
+@router.get("/{class_id}/schedule", response_model=ClassScheduleRead)
+async def get_class_schedule(
+    class_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the weekly schedule (day/time slots) for a class."""
+    schedule = await class_service.get_class_schedule(db, class_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Class not found")
+    return schedule
