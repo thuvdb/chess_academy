@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Users, UserPlus, Trash2,
-  BookOpen, Calendar, GraduationCap, RefreshCw
+  BookOpen, Calendar, GraduationCap, RefreshCw, Search, X
 } from 'lucide-react';
-import { getClassById, getClassStudents, enrollStudent, unenrollStudent, type ClassItem, type EnrollmentItem } from '../lib/classApi';
+import { getClassById, getClassStudents, enrollStudent, unenrollStudent, searchMembers, type ClassItem, type EnrollmentItem, type UserSearchResult } from '../lib/classApi';
 import ClassForm from '../components/ClassForm';
 import GenerateInvoiceModal from '../components/GenerateInvoiceModal';
 import { useAuthStore } from '../store/authStore';
@@ -41,7 +41,13 @@ export default function StudentList() {
   const [students, setStudents] = useState<EnrollmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEnroll, setShowEnroll] = useState(false);
-  const [enrollStudentId, setEnrollStudentId] = useState('');
+  // Student search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<UserSearchResult | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -66,16 +72,62 @@ export default function StudentList() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  // Live search with 300ms debounce
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await searchMembers(searchQuery);
+        setSearchResults(res.data);
+        setShowDropdown(true);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectStudent = (s: UserSearchResult) => {
+    setSelectedStudent(s);
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowDropdown(false);
+  };
+
+  const handleClearSelected = () => {
+    setSelectedStudent(null);
+    setSearchQuery('');
+  };
+
   const handleEnroll = async () => {
-    if (!classId || !enrollStudentId.trim()) {
-      toast.error('Please enter a student ID');
+    if (!classId || !selectedStudent) {
+      toast.error('Please search and select a student first');
       return;
     }
     setEnrolling(true);
     try {
-      await enrollStudent(classId, enrollStudentId.trim());
-      toast.success('Student enrolled successfully!');
-      setEnrollStudentId('');
+      await enrollStudent(classId, selectedStudent.id);
+      toast.success(`${selectedStudent.full_name} enrolled successfully!`);
+      setSelectedStudent(null);
+      setSearchQuery('');
       setShowEnroll(false);
       fetchAll();
     } catch (err: unknown) {
@@ -198,25 +250,82 @@ export default function StudentList() {
           </button>
         </div>
 
-        {/* Enroll panel */}
+        {/* Enroll panel — name search */}
         {showEnroll && (
-          <div className="px-6 py-4 bg-slate-900/50 border-b border-slate-700 flex items-center gap-3">
-            <input
-              type="text"
-              value={enrollStudentId}
-              onChange={e => setEnrollStudentId(e.target.value)}
-              placeholder="Paste Student UUID..."
-              className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-amber-500 transition-colors placeholder-slate-500"
-              onKeyDown={e => e.key === 'Enter' && handleEnroll()}
-            />
-            <button
-              onClick={handleEnroll}
-              disabled={enrolling}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-900 font-semibold px-4 py-2 rounded-xl transition-all text-sm"
-            >
-              {enrolling ? <span className="w-3.5 h-3.5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
-              Enroll
-            </button>
+          <div className="px-6 py-4 bg-slate-900/50 border-b border-slate-700">
+            <div className="flex items-start gap-3">
+              {/* Search input / selected badge */}
+              <div className="flex-1 relative" ref={searchRef}>
+                {selectedStudent ? (
+                  /* Selected student badge */
+                  <div className="flex items-center gap-2 bg-amber-500/15 border border-amber-500/40 rounded-xl px-4 py-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {selectedStudent.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-amber-300 text-sm font-medium flex-1">{selectedStudent.full_name}</span>
+                    <span className="text-slate-400 text-xs">{selectedStudent.email}</span>
+                    <button onClick={handleClearSelected} className="text-slate-400 hover:text-white transition-colors ml-1">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  /* Search input */
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    {searching && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+                    )}
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search student by name or email..."
+                      autoFocus
+                      className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-amber-500 transition-colors placeholder-slate-500"
+                      onKeyDown={e => e.key === 'Escape' && setShowEnroll(false)}
+                    />
+                  </div>
+                )}
+
+                {/* Dropdown results */}
+                {showDropdown && searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-20 overflow-hidden">
+                    {searchResults.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => handleSelectStudent(s)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-700 transition-colors text-left"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {s.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-white text-sm font-medium">{s.full_name}</p>
+                          <p className="text-slate-400 text-xs">{s.email} · {s.role}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showDropdown && searchResults.length === 0 && searchQuery.length >= 2 && !searching && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-20 px-4 py-3 text-slate-400 text-sm">
+                    No students found for "{searchQuery}"
+                  </div>
+                )}
+              </div>
+
+              {/* Enroll button */}
+              <button
+                onClick={handleEnroll}
+                disabled={enrolling || !selectedStudent}
+                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold px-4 py-2 rounded-xl transition-all text-sm shrink-0"
+              >
+                {enrolling
+                  ? <span className="w-3.5 h-3.5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+                  : <UserPlus className="w-3.5 h-3.5" />}
+                Enroll
+              </button>
+            </div>
           </div>
         )}
 

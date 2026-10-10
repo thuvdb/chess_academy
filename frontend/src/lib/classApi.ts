@@ -78,3 +78,15 @@ export const enrollStudent = (classId: string, studentId: string) =>
 // Unenroll student
 export const unenrollStudent = (classId: string, studentId: string) =>
   api.delete(`/classes/${classId}/students/${studentId}`);
+
+// Search users/members by name, email, or username (for student picker)
+export interface UserSearchResult {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+}
+
+export const searchMembers = (search: string) =>
+  api.get<UserSearchResult[]>('/users/members', { params: { search, limit: 10 } });
+
