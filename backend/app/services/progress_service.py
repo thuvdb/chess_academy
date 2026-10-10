@@ -12,6 +12,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.assignment import Assignment
 from app.models.base import GradingMethod, ProgressStatus
 from app.models.progress import StudentAttempt, StudentProgress
 from app.models.puzzle import Puzzle, PuzzleSolution
@@ -116,29 +117,49 @@ async def submit_attempt(
     points = 0
     now = datetime.now(timezone.utc)
 
-    if is_correct:
-        # Full points (100 base or scaled by rating)
-        base_points = max(10, puzzle.rating // 100)
-        penalty = 5 if attempt_in.hint_used else 0
-        points = max(5, base_points - penalty)
+    # Check assignment due date & overdue status
+    is_overdue = False
+    if attempt_in.assignment_id:
+        asm_stmt = select(Assignment).where(Assignment.id == attempt_in.assignment_id)
+        asm_res = await db.execute(asm_stmt)
+        assignment = asm_res.scalar_one_or_none()
+        if assignment and assignment.due_date:
+            due = assignment.due_date
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=timezone.utc)
+            if now > due:
+                is_overdue = True
 
-        progress.status = ProgressStatus.COMPLETED.value
-        progress.points_earned += points
+    was_already_solved = (progress.status == ProgressStatus.SOLVED.value)
+
+    if is_correct:
+        if not is_overdue:
+            base_points = max(10, puzzle.rating // 100)
+            penalty = 5 if attempt_in.hint_used else 0
+            points = max(5, base_points - penalty)
+        else:
+            # Overdue practice: 0 points toward homework leaderboard
+            points = 0
+
+        progress.status = ProgressStatus.SOLVED.value
+        if not was_already_solved:
+            progress.points_earned += points
         progress.grading_method = GradingMethod.AUTO_AI.value
         progress.solved_at = now
 
-        # Update puzzle rating & student rating
-        student_stmt = select(User).where(User.id == student_id)
-        s_res = await db.execute(student_stmt)
-        student = s_res.scalar_one_or_none()
-        if student:
-            new_s_rating, new_p_rating = calculate_new_puzzle_rating(
-                user_rating=student.elo_rating,
-                puzzle_rating=puzzle.rating,
-                solved=True,
-            )
-            student.elo_rating = new_s_rating
-            puzzle.rating = new_p_rating
+        # Update puzzle rating & student rating on first solve
+        if not was_already_solved:
+            student_stmt = select(User).where(User.id == student_id)
+            s_res = await db.execute(student_stmt)
+            student = s_res.scalar_one_or_none()
+            if student:
+                new_s_rating, new_p_rating = calculate_new_puzzle_rating(
+                    user_rating=student.elo_rating,
+                    puzzle_rating=puzzle.rating,
+                    solved=True,
+                )
+                student.elo_rating = new_s_rating
+                puzzle.rating = new_p_rating
 
         # Update puzzle play count
         puzzle.play_count += 1
@@ -192,7 +213,7 @@ async def grade_manually(
     progress.graded_by = teacher_id
     progress.grading_method = GradingMethod.MANUAL_TEACHER.value
     progress.graded_at = datetime.now(timezone.utc)
-    progress.status = ProgressStatus.COMPLETED.value
+    progress.status = ProgressStatus.SOLVED.value
 
     await db.flush()
     await db.refresh(progress)

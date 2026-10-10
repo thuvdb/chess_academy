@@ -41,7 +41,7 @@ def ensure_scan_job_access(job, user: User) -> None:
 
 def ensure_puzzle_access(puzzle, user: User, write: bool = False) -> None:
     """
-    Read: super_admin, global puzzles (center_id is NULL), or same center.
+    Read: super_admin, global puzzles (center_id is NULL), unscoped users (user.center_id is NULL), or same center.
     Write: super_admin, or staff of the puzzle's own center (global puzzles are super_admin only).
     """
     if user.role == "super_admin":
@@ -52,7 +52,7 @@ def ensure_puzzle_access(puzzle, user: User, write: bool = False) -> None:
         if is_staff(user) and same_center(user, puzzle.center_id):
             return
     else:
-        if puzzle.center_id is None or same_center(user, puzzle.center_id):
+        if puzzle.center_id is None or user.center_id is None or same_center(user, puzzle.center_id):
             return
     raise HTTPException(404, detail="Puzzle not found")
 

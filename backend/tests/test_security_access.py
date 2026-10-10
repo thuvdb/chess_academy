@@ -80,6 +80,8 @@ def test_scan_job_staff_without_center_denied():
 def test_puzzle_read_global_and_own_center():
     ensure_puzzle_access(_puzzle(center_id=None), _user("student"))
     ensure_puzzle_access(_puzzle(), _user("student"))
+    # Unscoped users (legacy / unassigned center) can read puzzles
+    ensure_puzzle_access(_puzzle(), _user("student", center_id=None))
 
 
 def test_puzzle_read_other_center_denied():

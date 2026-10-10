@@ -230,7 +230,7 @@ export default function AssignmentDetail() {
               <div className="mt-2">
                 {solvedPuzzleIds.size >= totalPuzzles && totalPuzzles > 0 ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/20 text-green-400 border border-green-500/40 text-sm font-semibold">
-                    <CheckCircle className="w-4 h-4" /> Hoàn thành 100%
+                    <CheckCircle className="w-4 h-4" /> Đã nộp bài (Hoàn thành 100%)
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 text-sm font-semibold">
@@ -239,9 +239,17 @@ export default function AssignmentDetail() {
                 )}
               </div>
               <p className="text-slate-400 text-xs mt-3">
-                {isExpired ? 'Hạn chót đã qua, hãy cố gắng hoàn thành sớm' : 'Vẫn còn trong thời hạn nộp bài'}
+                {isExpired
+                  ? 'Đã hết hạn nộp — bạn vẫn có thể luyện tập nhưng không tính thêm điểm'
+                  : 'Tự động lưu và nộp theo từng bài. Có thể làm lại trước hạn chót.'}
               </p>
             </div>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-indigo-500/20 flex items-center justify-between text-xs text-indigo-300/80">
+            <span>
+              ℹ️ <strong>Cơ chế nộp bài:</strong> Hệ thống tự động ghi nhận ngay khi bạn giải đúng thế cờ. Hoàn thành toàn bộ {totalPuzzles} thế cờ sẽ tự động chuyển sang trạng thái <strong>Đã nộp bài</strong>.
+            </span>
           </div>
         </div>
       )}
