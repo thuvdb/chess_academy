@@ -1,8 +1,11 @@
 {
   "task_id": "CAMS-0014",
   "type": "FEATURE",
-  "state": "INTAKE",
-  "specialists_invoked": [],
+  "state": "IN_PROGRESS",
+  "specialists_invoked": [
+    "cams-architect",
+    "cams-backend"
+  ],
   "gates": {
     "qa": "PENDING",
     "security": "PENDING",
@@ -12,7 +15,8 @@
   "assumptions": [
     "Phát hiện trong lúc làm CAMS-0004 (Sprint 2 schedule endpoint), không thuộc scope task đó nên mở task riêng",
     "Module classes CÓ sẵn cột center_id/branch_id trên model nhưng chưa endpoint nào filter theo",
-    "Các module khác (fee_plans, invoices, leaderboard, puzzles) ĐÃ scope theo current_user.center_id — classes là ngoại lệ, nên đã có precedent rõ để bám theo"
+    "Các module khác (fee_plans, invoices, leaderboard, puzzles) ĐÃ scope theo current_user.center_id — classes là ngoại lệ, nên đã có precedent rõ để bám theo",
+    "User đã chốt: (1) Roster ẩn email đối với student/parent, chỉ hiện full_name; teacher phụ trách và admin mới thấy email. (2) super_admin xem toàn hệ thống, admin chỉ quản trị trung tâm của mình."
   ],
   "findings": [
     {
@@ -38,14 +42,14 @@
     }
   ],
   "handoff": {
-    "triggered_at": null,
-    "reason": null,
-    "resume_prompt": "CAMS-0014 mới ở trạng thái INTAKE. Trước khi implement cần user chốt permission model (xem pending_decisions trong .agents/context/CAMS-0014-Context.yaml): student/parent được xem roster lớp mình hay không, và admin có phải cross-center hay không. Sau khi chốt: Architect → Backend → QA → Security.",
+    "triggered_at": "2026-10-10T22:36:00+07:00",
+    "reason": "manual",
+    "resume_prompt": "Tiếp tục implement CAMS-0014: Siết tenancy & authorization cho Classes API. User đã chốt 2 quyết định: (1) student/parent chỉ thấy tên bạn học, ẩn hoàn toàn email; chỉ giáo viên phụ trách lớp và Admin mới thấy email. (2) super_admin quản trị toàn hệ thống, admin chỉ quản trị trung tâm của mình. Đã thêm helper authorization vào access.py và hỗ trợ center_id, include_email trong class_service.py. Bước tiếp theo: Cập nhật backend/app/api/endpoints/classes.py để tích hợp ensure_class_access, ensure_class_ownership và filter center_id, sau đó viết test vào test_security_access.py và chạy QA/Security gate.",
     "git_state": {
       "branch": "main",
-      "last_commit": "8cb92cf",
-      "has_uncommitted": false
+      "last_commit": "3461190",
+      "has_uncommitted": true
     }
   },
-  "updated_at": "2026-10-10T00:00:00+07:00"
+  "updated_at": "2026-10-10T22:36:00+07:00"
 }
