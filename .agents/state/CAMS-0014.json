@@ -1,14 +1,16 @@
 {
   "task_id": "CAMS-0014",
   "type": "FEATURE",
-  "state": "IN_PROGRESS",
+  "state": "DONE",
   "specialists_invoked": [
     "cams-architect",
-    "cams-backend"
+    "cams-backend",
+    "cams-qa",
+    "cams-security"
   ],
   "gates": {
-    "qa": "PENDING",
-    "security": "PENDING",
+    "qa": "PASS",
+    "security": "PASS",
     "deploy_approval": "N/A"
   },
   "retries": {},
@@ -16,40 +18,40 @@
     "Phát hiện trong lúc làm CAMS-0004 (Sprint 2 schedule endpoint), không thuộc scope task đó nên mở task riêng",
     "Module classes CÓ sẵn cột center_id/branch_id trên model nhưng chưa endpoint nào filter theo",
     "Các module khác (fee_plans, invoices, leaderboard, puzzles) ĐÃ scope theo current_user.center_id — classes là ngoại lệ, nên đã có precedent rõ để bám theo",
-    "User đã chốt: (1) Roster ẩn email đối với student/parent, chỉ hiện full_name; teacher phụ trách và admin mới thấy email. (2) super_admin xem toàn hệ thống, admin chỉ quản trị trung tâm của mình."
+    "User đã chốt: (1) student/parent chỉ thấy tên bạn học, ẩn hoàn toàn email; chỉ giáo viên phụ trách lớp và Admin mới thấy email. (2) super_admin xem toàn hệ thống, admin chỉ quản trị trung tâm của mình."
   ],
   "findings": [
     {
       "id": "F1",
       "severity": "HIGH",
       "title": "Rò rỉ PII học sinh xuyên center",
-      "detail": "GET /api/classes/{class_id}/students trả student_name + student_email cho MỌI user đã đăng nhập, kể cả role student/parent và kể cả user thuộc center khác. Chỉ cần biết class UUID.",
-      "location": "backend/app/api/endpoints/classes.py:106"
+      "status": "CLOSED",
+      "fix": "list_class_students giờ tính include_email = (admin/super_admin) OR (class teacher). student/parent nhận student_email: null."
     },
     {
       "id": "F2",
       "severity": "MEDIUM",
       "title": "Read endpoints không scope theo center/branch",
-      "detail": "list_classes, get_class, list_class_students, get_class_schedule đều chỉ dùng get_current_user, không filter theo center_id/branch_id. User center A đọc được lớp của center B.",
-      "location": "backend/app/api/endpoints/classes.py:22,41,105,153"
+      "status": "CLOSED",
+      "fix": "list_classes tự động filter center_id; get_class, list_class_students, get_class_schedule đều gọi ensure_class_access() → 404 nếu khác center."
     },
     {
       "id": "F3",
       "severity": "MEDIUM",
       "title": "Teacher enroll/unenroll được vào lớp của teacher khác",
-      "detail": "enroll_student và unenroll_student chỉ check require_role([admin, super_admin, teacher]) mà KHÔNG check ownership lớp — trong khi update_class:76-79 đã check existing['teacher_id'] != current_user.id. Bất nhất trong cùng một file.",
-      "location": "backend/app/api/endpoints/classes.py:120,138"
+      "status": "CLOSED",
+      "fix": "enroll_student và unenroll_student gọi ensure_class_ownership() → 403 nếu teacher không phải chủ lớp."
     }
   ],
   "handoff": {
-    "triggered_at": "2026-10-10T22:36:00+07:00",
+    "triggered_at": "2026-10-10T22:43:44+07:00",
     "reason": "manual",
-    "resume_prompt": "Tiếp tục implement CAMS-0014: Siết tenancy & authorization cho Classes API. User đã chốt 2 quyết định: (1) student/parent chỉ thấy tên bạn học, ẩn hoàn toàn email; chỉ giáo viên phụ trách lớp và Admin mới thấy email. (2) super_admin quản trị toàn hệ thống, admin chỉ quản trị trung tâm của mình. Đã thêm helper authorization vào access.py và hỗ trợ center_id, include_email trong class_service.py. Bước tiếp theo: Cập nhật backend/app/api/endpoints/classes.py để tích hợp ensure_class_access, ensure_class_ownership và filter center_id, sau đó viết test vào test_security_access.py và chạy QA/Security gate.",
+    "resume_prompt": "Task CAMS-0014 đã hoàn thành. Đã đóng F1/F2/F3 trên module classes. Sẵn sàng tiếp nhận task mới.",
     "git_state": {
       "branch": "main",
-      "last_commit": "3461190",
-      "has_uncommitted": true
+      "last_commit": "8e40d51",
+      "has_uncommitted": false
     }
   },
-  "updated_at": "2026-10-10T22:36:00+07:00"
+  "updated_at": "2026-10-10T22:43:44+07:00"
 }
