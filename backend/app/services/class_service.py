@@ -22,10 +22,13 @@ async def get_classes(
     search: str | None = None,
     teacher_id: uuid.UUID | None = None,
     is_active: bool | None = None,
+    center_id: uuid.UUID | None = None,
 ):
     """List classes with optional filters."""
     query = select(Class).offset(skip).limit(limit)
 
+    if center_id:
+        query = query.where(Class.center_id == center_id)
     if level:
         query = query.where(Class.level == level)
     if search:
@@ -138,9 +141,15 @@ async def delete_class(db: AsyncSession, class_id: uuid.UUID) -> tuple[bool, str
 # ==================== Enrollment CRUD ====================
 
 async def get_class_enrollments(
-    db: AsyncSession, class_id: uuid.UUID
+    db: AsyncSession, class_id: uuid.UUID, include_email: bool = True
 ):
-    """List all enrollments for a class."""
+    """List all enrollments for a class.
+
+    Args:
+        include_email: When False, student_email is always None.
+            Used when the caller is a student/parent who should
+            not see classmate emails (CAMS-0014 decision 1).
+    """
     query = (
         select(ClassEnrollment)
         .where(ClassEnrollment.class_id == class_id)
@@ -158,7 +167,7 @@ async def get_class_enrollments(
             "enrolled_at": e.enrolled_at,
             "status": e.status,
             "student_name": e.student.full_name if e.student else None,
-            "student_email": e.student.email if e.student else None,
+            "student_email": (e.student.email if e.student else None) if include_email else None,
         })
     return enriched
 

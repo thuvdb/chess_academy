@@ -47,7 +47,7 @@ def ensure_puzzle_access(puzzle, user: User, write: bool = False) -> None:
     if user.role == "super_admin":
         return
     if write:
-        if puzzle.created_by == user.id:
+        if getattr(puzzle, "created_by", None) == user.id:
             return
         if is_staff(user) and same_center(user, puzzle.center_id):
             return
@@ -55,3 +55,44 @@ def ensure_puzzle_access(puzzle, user: User, write: bool = False) -> None:
         if puzzle.center_id is None or same_center(user, puzzle.center_id):
             return
     raise HTTPException(404, detail="Puzzle not found")
+
+
+def ensure_class_access(cls_dict: dict, user: User) -> None:
+    """Check that user can access a class (read-level).
+
+    Rules (CAMS-0014):
+      - super_admin: cross-center access.
+      - admin: own center only.
+      - teacher / student / parent: own center only.
+    Returns 404 (not 403) to avoid leaking class existence across centers.
+    """
+    if user.role == "super_admin":
+        return
+    class_center = cls_dict.get("center_id")
+    if same_center(user, class_center):
+        return
+    raise HTTPException(404, detail="Class not found")
+
+
+def ensure_class_ownership(cls_dict: dict, user: User) -> None:
+    """Check that a teacher is the owner of the class before modifying enrollments.
+
+    Rules (CAMS-0014 F3):
+      - super_admin: always allowed.
+      - admin: allowed for classes within own center.
+      - teacher: only own classes (teacher_id == user.id) AND same center.
+    """
+    if user.role == "super_admin":
+        return
+    class_center = cls_dict.get("center_id")
+    if user.role == "admin":
+        if same_center(user, class_center):
+            return
+        raise HTTPException(404, detail="Class not found")
+    # teacher — must own the class AND be same center
+    if user.role == "teacher":
+        if cls_dict.get("teacher_id") == user.id and same_center(user, class_center):
+            return
+        raise HTTPException(403, detail="You can only manage your own classes")
+    raise HTTPException(403, detail="Insufficient permissions")
+
