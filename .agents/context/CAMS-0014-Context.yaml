@@ -1,0 +1,65 @@
+task_id: CAMS-0014
+type: FEATURE
+title: Siết tenancy & authorization cho Classes API
+objective: >
+  Áp dụng scoping theo center/branch và kiểm tra ownership cho toàn bộ module classes.
+  Hiện mọi user đã đăng nhập đọc được bất kỳ lớp nào nếu biết UUID, và nghiêm trọng nhất là
+  GET /api/classes/{class_id}/students trả về student_name + student_email cho cả role
+  student/parent lẫn user thuộc center khác. Ngoài ra teacher có thể enroll/unenroll học sinh
+  vào lớp của teacher khác vì endpoint chỉ check role mà không check ownership.
+  Mục tiêu: đóng 3 finding F1/F2/F3 trong .agents/state/CAMS-0014.json, nhất quán với
+  pattern scoping đã dùng ở fee_plans/invoices/leaderboard/puzzles.
+source_of_truth:
+  - docs/SDLC.md
+  - docs/01_requirements.md
+  - .agents/state/CAMS-0014.json
+  - backend/app/api/endpoints/fee_plans.py   # precedent scoping đã có
+affected_modules:
+  - backend/app/api/endpoints/classes.py
+  - backend/app/services/class_service.py
+  - backend/tests/test_security_access.py
+constraints:
+  - Bám theo precedent sẵn có, KHÔNG tự phát minh pattern mới:
+      fee_plans.py:35  -> if current_user.center_id != center_id and current_user.role != "admin": 403
+      invoices.py:106  -> if invoice.center_id != current_user.center_id and current_user.role != "admin": 403
+  - Không đổi schema DB — Class.center_id/branch_id và User.center_id/primary_branch_id đã tồn tại.
+  - Không phá vỡ frontend hiện có: Classes.tsx, StudentList.tsx, Schedule.tsx đều đang gọi
+    các endpoint này với tài khoản teacher/admin. Kiểm tra lại sau khi siết quyền.
+  - Giữ nguyên contract response (field giống hiện tại) — chỉ thay đổi ai được phép gọi.
+  - 403 cho "không có quyền", 404 cho "không tồn tại" — không để lộ sự tồn tại của lớp thuộc center khác.
+dependencies:
+  - Authentication (đã xong — app/api/deps.py: get_current_user, require_role)
+  - CAMS-0004 (đã DONE — endpoint schedule mới cũng nằm trong phạm vi siết quyền này)
+acceptance_criteria:
+  - F1 đóng: student/parent KHÔNG đọc được student_email của lớp không liên quan tới mình.
+  - F2 đóng: list_classes chỉ trả lớp trong center của caller; get_class / list_class_students /
+    get_class_schedule trả 403 hoặc 404 khi lớp thuộc center khác.
+  - F3 đóng: teacher chỉ enroll/unenroll được trong lớp mình phụ trách (dùng lại đúng pattern
+    ownership check ở update_class:76-79).
+  - super_admin giữ quyền cross-center.
+  - Có test cho từng finding trong backend/tests/test_security_access.py.
+  - Frontend teacher/admin flow vẫn chạy đúng sau khi siết quyền (Classes, StudentList, Schedule).
+read_only: false
+timeout_seconds: 1800
+max_retries: 2
+model_tier: pro
+routing: >
+  Theo rule 04 §3: task đổi luồng authorization và chạm nhiều endpoint
+  -> Architect chốt permission model TRƯỚC, rồi Backend implement, QA, cuối cùng Security review.
+  Security Gate bắt buộc theo §7 (authorization + personal data).
+pending_decisions:
+  - >
+    BLOCKING (rule 04 §12): student và parent có được xem roster lớp mà mình/con mình đang học không?
+    Nếu có thì có được thấy email của bạn học không, hay chỉ thấy tên?
+    Đề xuất mặc định: student/parent chỉ thấy tên bạn học, KHÔNG thấy email; chỉ teacher phụ trách
+    và admin thấy email.
+  - >
+    BLOCKING: role "admin" là admin-của-một-center hay admin-toàn-hệ-thống?
+    Precedent ở fee_plans.py:35 cho admin bypass check center (ngụ ý toàn hệ thống), nhưng
+    User.center_id tồn tại cho cả admin (ngụ ý theo center). Cần chốt để tránh vừa siết vừa hở.
+expected_output:
+  - files_changed
+  - implementation_summary
+  - tests
+  - risks
+  - unresolved_questions

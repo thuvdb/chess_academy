@@ -1,0 +1,51 @@
+{
+  "task_id": "CAMS-0014",
+  "type": "FEATURE",
+  "state": "INTAKE",
+  "specialists_invoked": [],
+  "gates": {
+    "qa": "PENDING",
+    "security": "PENDING",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Phát hiện trong lúc làm CAMS-0004 (Sprint 2 schedule endpoint), không thuộc scope task đó nên mở task riêng",
+    "Module classes CÓ sẵn cột center_id/branch_id trên model nhưng chưa endpoint nào filter theo",
+    "Các module khác (fee_plans, invoices, leaderboard, puzzles) ĐÃ scope theo current_user.center_id — classes là ngoại lệ, nên đã có precedent rõ để bám theo"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "HIGH",
+      "title": "Rò rỉ PII học sinh xuyên center",
+      "detail": "GET /api/classes/{class_id}/students trả student_name + student_email cho MỌI user đã đăng nhập, kể cả role student/parent và kể cả user thuộc center khác. Chỉ cần biết class UUID.",
+      "location": "backend/app/api/endpoints/classes.py:106"
+    },
+    {
+      "id": "F2",
+      "severity": "MEDIUM",
+      "title": "Read endpoints không scope theo center/branch",
+      "detail": "list_classes, get_class, list_class_students, get_class_schedule đều chỉ dùng get_current_user, không filter theo center_id/branch_id. User center A đọc được lớp của center B.",
+      "location": "backend/app/api/endpoints/classes.py:22,41,105,153"
+    },
+    {
+      "id": "F3",
+      "severity": "MEDIUM",
+      "title": "Teacher enroll/unenroll được vào lớp của teacher khác",
+      "detail": "enroll_student và unenroll_student chỉ check require_role([admin, super_admin, teacher]) mà KHÔNG check ownership lớp — trong khi update_class:76-79 đã check existing['teacher_id'] != current_user.id. Bất nhất trong cùng một file.",
+      "location": "backend/app/api/endpoints/classes.py:120,138"
+    }
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": "CAMS-0014 mới ở trạng thái INTAKE. Trước khi implement cần user chốt permission model (xem pending_decisions trong .agents/context/CAMS-0014-Context.yaml): student/parent được xem roster lớp mình hay không, và admin có phải cross-center hay không. Sau khi chốt: Architect → Backend → QA → Security.",
+    "git_state": {
+      "branch": "main",
+      "last_commit": null,
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-10T00:00:00+07:00"
+}
