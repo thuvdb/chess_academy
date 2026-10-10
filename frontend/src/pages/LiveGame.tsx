@@ -216,7 +216,7 @@ export default function LiveGame() {
 
   // ---- Piece drop ----
   const handlePieceDrop = useCallback(
-    ({ sourceSquare, targetSquare }: any): boolean => {
+    (sourceSquare: string, targetSquare: string): boolean => {
       if (!isConnected || gameOver || !isMyTurn) return false;
 
       const tryMove = (opts: any) => {
@@ -248,12 +248,12 @@ export default function LiveGame() {
 
   // ---- Square click: show legal moves or make move ----
   const handleSquareClick = useCallback(
-    ({ square }: any) => {
+    (square: string) => {
       if (!isMyTurn || gameOver) return;
 
       // If a piece is selected and clicked square is a legal move -> make the move
       if (selectedSquare && legalMoves.includes(square)) {
-        handlePieceDrop({ piece: '', sourceSquare: selectedSquare, targetSquare: square });
+        handlePieceDrop(selectedSquare, square);
         return;
       }
 
@@ -265,12 +265,12 @@ export default function LiveGame() {
 
   // ---- Piece click: show legal moves ----
   const handlePieceClick = useCallback(
-    ({ square }: any) => {
+    (square: string) => {
       if (!isMyTurn || gameOver) return;
 
       // If clicking own piece while another is selected, and this square is legal -> move
       if (selectedSquare && legalMoves.includes(square)) {
-        handlePieceDrop({ piece: '', sourceSquare: selectedSquare, targetSquare: square });
+        handlePieceDrop(selectedSquare, square);
         return;
       }
 
@@ -352,9 +352,16 @@ export default function LiveGame() {
                   position: fen,
                   boardOrientation: boardOrientation,
                   allowDragging: isPlayer && !gameOver,
-                  onPieceDrop: handlePieceDrop,
-                  onPieceClick: handlePieceClick,
-                  onSquareClick: handleSquareClick,
+                  onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                    if (!targetSquare) return false;
+                    return handlePieceDrop(sourceSquare, targetSquare);
+                  },
+                  onSquareClick: ({ square }) => {
+                    handleSquareClick(square);
+                  },
+                  onPieceClick: ({ square }) => {
+                    if (square) handlePieceClick(square);
+                  },
                   squareStyles: squareStyles,
                   darkSquareStyle: { backgroundColor: '#475569' },
                   lightSquareStyle: { backgroundColor: '#94a3b8' },

@@ -1,20 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Chessboard } from 'react-chessboard';
 import {
-  BookOpen, Plus, Search, Filter, Play, Trash2,
+  BookOpen, Plus, Search, Filter, Play, Trash2, Pencil,
   Zap, Tag, Star, X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  getPuzzles, createPuzzle, deletePuzzle,
+  getPuzzles, createPuzzle, updatePuzzle, deletePuzzle,
   type PuzzleItem, type CreatePuzzleInput
 } from '../lib/puzzleApi';
 
 const DIFFICULTY_COLORS: Record<string, string> = {
+  easy: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   beginner: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  medium: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
   intermediate: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  hard: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
   advanced: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  expert: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   master: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
 };
 
@@ -26,15 +30,27 @@ export default function Puzzles() {
   const [puzzleType, setPuzzleType] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Form State
+  // Create Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [fen, setFen] = useState('r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 4');
-  const [formDifficulty, setFormDifficulty] = useState('beginner');
-  const [formType, setFormType] = useState('tactics');
+  const [formDifficulty, setFormDifficulty] = useState('easy');
+  const [formType, setFormType] = useState('tactic');
   const [rating, setRating] = useState(1200);
   const [solutionUci, setSolutionUci] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Edit Form State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPuzzle, setEditingPuzzle] = useState<PuzzleItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editFen, setEditFen] = useState('');
+  const [editDifficulty, setEditDifficulty] = useState('easy');
+  const [editType, setEditType] = useState('tactic');
+  const [editRating, setEditRating] = useState(1200);
+  const [editSolutionUci, setEditSolutionUci] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   const fetchPuzzles = useCallback(async () => {
     setLoading(true);
@@ -46,7 +62,7 @@ export default function Puzzles() {
       });
       setPuzzles(data);
     } catch {
-      toast.error('Failed to load puzzles');
+      toast.error('Không thể tải danh sách bài tập');
     } finally {
       setLoading(false);
     }
@@ -59,7 +75,7 @@ export default function Puzzles() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !fen.trim()) {
-      toast.error('Title and FEN are required');
+      toast.error('Tiêu đề và FEN là bắt buộc');
       return;
     }
     setSaving(true);
@@ -74,9 +90,9 @@ export default function Puzzles() {
         : [];
 
       const payload: CreatePuzzleInput = {
-        title,
-        description: description || undefined,
-        fen,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        fen: fen.trim(),
         difficulty: formDifficulty,
         puzzle_type: formType,
         rating: Number(rating),
@@ -84,7 +100,7 @@ export default function Puzzles() {
       };
 
       await createPuzzle(payload);
-      toast.success('Puzzle created successfully');
+      toast.success('Tạo bài tập thành công');
       setShowCreateModal(false);
       // Reset form
       setTitle('');
@@ -92,21 +108,81 @@ export default function Puzzles() {
       setSolutionUci('');
       fetchPuzzles();
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to create puzzle');
+      toast.error(err.response?.data?.detail || 'Không thể tạo bài tập');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleOpenEdit = (p: PuzzleItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPuzzle(p);
+    setEditTitle(p.title || '');
+    setEditDescription(p.description || '');
+    setEditFen(p.fen || '');
+    setEditDifficulty(p.difficulty || 'easy');
+    setEditType(p.puzzle_type || 'tactic');
+    setEditRating(p.rating || 1200);
+
+    const uciMoves = p.solutions && p.solutions.length > 0
+      ? [...p.solutions]
+          .sort((a, b) => a.move_order - b.move_order)
+          .map((s) => s.move_uci)
+          .join(', ')
+      : '';
+    setEditSolutionUci(uciMoves);
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPuzzle) return;
+    if (!editTitle.trim() || !editFen.trim()) {
+      toast.error('Tiêu đề và FEN là bắt buộc');
+      return;
+    }
+    setUpdating(true);
+    try {
+      const solutions = editSolutionUci.trim()
+        ? editSolutionUci.split(',').map((move, index) => ({
+            move_order: index + 1,
+            move_uci: move.trim(),
+            move_san: move.trim(),
+            is_best_move: true,
+          }))
+        : [];
+
+      const payload = {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        fen: editFen.trim(),
+        difficulty: editDifficulty,
+        puzzle_type: editType,
+        rating: Number(editRating),
+        solutions,
+      };
+
+      await updatePuzzle(editingPuzzle.id, payload);
+      toast.success('Cập nhật bài tập thành công');
+      setShowEditModal(false);
+      setEditingPuzzle(null);
+      fetchPuzzles();
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Không thể cập nhật bài tập');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this puzzle from the library?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài tập này khỏi thư viện?')) return;
     try {
       await deletePuzzle(id);
-      toast.success('Puzzle deleted');
-      setPuzzles(puzzles.filter(p => p.id !== id));
+      toast.success('Đã xóa bài tập');
+      setPuzzles((prev) => prev.filter((p) => p.id !== id));
     } catch {
-      toast.error('Failed to delete puzzle');
+      toast.error('Không thể xóa bài tập');
     }
   };
 
@@ -163,10 +239,10 @@ export default function Puzzles() {
               className="bg-transparent border-none text-slate-200 text-sm focus:outline-none cursor-pointer"
             >
               <option value="" className="bg-slate-800">Tất cả cấp độ</option>
-              <option value="beginner" className="bg-slate-800">Beginner (1000 - 1200)</option>
-              <option value="intermediate" className="bg-slate-800">Intermediate (1200 - 1600)</option>
-              <option value="advanced" className="bg-slate-800">Advanced (1600 - 2000)</option>
-              <option value="master" className="bg-slate-800">Master (&gt; 2000)</option>
+              <option value="easy" className="bg-slate-800">Dễ (Easy / Beginner)</option>
+              <option value="medium" className="bg-slate-800">Trung bình (Medium)</option>
+              <option value="hard" className="bg-slate-800">Khó (Hard / Advanced)</option>
+              <option value="expert" className="bg-slate-800">Chuyên gia (Expert / Master)</option>
             </select>
           </div>
 
@@ -178,12 +254,13 @@ export default function Puzzles() {
               className="bg-transparent border-none text-slate-200 text-sm focus:outline-none cursor-pointer"
             >
               <option value="" className="bg-slate-800">Tất cả thể loại</option>
-              <option value="tactics" className="bg-slate-800">Chiến thuật (Tactics)</option>
+              <option value="tactic" className="bg-slate-800">Chiến thuật (Tactic)</option>
               <option value="mate_in_1" className="bg-slate-800">Chiếu hết 1 nước</option>
               <option value="mate_in_2" className="bg-slate-800">Chiếu hết 2 nước</option>
-              <option value="fork" className="bg-slate-800">Đòn chĩa đôi (Fork)</option>
-              <option value="pin" className="bg-slate-800">Đòn ghim (Pin)</option>
+              <option value="mate_in_3" className="bg-slate-800">Chiếu hết 3 nước</option>
               <option value="endgame" className="bg-slate-800">Tàn cuộc (Endgame)</option>
+              <option value="opening" className="bg-slate-800">Khai cuộc (Opening)</option>
+              <option value="strategy" className="bg-slate-800">Chiến lược (Strategy)</option>
             </select>
           </div>
         </div>
@@ -213,7 +290,9 @@ export default function Puzzles() {
               <div className="h-56 bg-slate-900/90 flex items-center justify-center p-3 relative">
                 <div className="w-48 h-48 pointer-events-none rounded-lg overflow-hidden shadow">
                   <Chessboard
+                    key={p.id}
                     options={{
+                      id: `preview-${p.id}`,
                       position: p.fen,
                       allowDragging: false,
                     }}
@@ -222,23 +301,34 @@ export default function Puzzles() {
                 <div className="absolute top-3 left-3 flex gap-2">
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                      DIFFICULTY_COLORS[p.difficulty || 'beginner']
+                      DIFFICULTY_COLORS[p.difficulty || 'easy'] || DIFFICULTY_COLORS.easy
                     }`}
                   >
-                    {p.difficulty || 'beginner'}
+                    {p.difficulty || 'easy'}
                   </span>
                   <span className="bg-slate-800/90 text-amber-400 border border-slate-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
                     <Star className="w-3 h-3 fill-current" />
                     {p.rating}
                   </span>
                 </div>
-                <button
-                  onClick={(e) => handleDelete(p.id, e)}
-                  className="absolute top-3 right-3 p-1.5 bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                  title="Xóa bài tập"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+
+                {/* Action Buttons: Edit (Pencil) & Delete (Trash) */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                  <button
+                    onClick={(e) => handleOpenEdit(p, e)}
+                    className="p-1.5 bg-slate-900/90 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition border border-slate-700/80 shadow-md backdrop-blur-sm"
+                    title="Chỉnh sửa bài tập"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(p.id, e)}
+                    className="p-1.5 bg-slate-900/90 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg transition border border-slate-700/80 shadow-md backdrop-blur-sm"
+                    title="Xóa bài tập"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Content */}
@@ -271,10 +361,179 @@ export default function Puzzles() {
         </div>
       )}
 
+      {/* Edit Modal */}
+      {showEditModal && editingPuzzle && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-indigo-400" />
+                Chỉnh sửa bài tập cờ vua
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingPuzzle(null);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdate} className="space-y-4">
+              {/* Live Preview Chessboard */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-900/60 p-3 rounded-xl border border-slate-700/60">
+                <div className="w-36 h-36 shrink-0 rounded-lg overflow-hidden border border-slate-700 shadow-md">
+                  <Chessboard
+                    key={`edit-preview-${editFen}`}
+                    options={{
+                      id: 'edit-preview-board',
+                      position: editFen,
+                      allowDragging: false,
+                    }}
+                  />
+                </div>
+                <div className="flex-1 text-xs text-slate-400 space-y-1">
+                  <p className="font-semibold text-slate-200">Xem trước thế cờ:</p>
+                  <p>Bàn cờ tự động cập nhật theo chuỗi FEN bên dưới.</p>
+                  <p className="text-amber-400/90 font-mono break-all text-[11px] line-clamp-3">
+                    {editFen || 'Chưa có FEN'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Tiêu đề bài tập *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Đòn chĩa đôi Hậu trắng e4"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Chuỗi FEN vị trí bắt đầu *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                  value={editFen}
+                  onChange={(e) => setEditFen(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Cấp độ
+                  </label>
+                  <select
+                    value={editDifficulty}
+                    onChange={(e) => setEditDifficulty(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
+                  >
+                    <option value="easy">Dễ (Easy)</option>
+                    <option value="medium">Trung bình (Medium)</option>
+                    <option value="hard">Khó (Hard)</option>
+                    <option value="expert">Chuyên gia (Expert)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Thể loại
+                  </label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
+                  >
+                    <option value="tactic">Chiến thuật (Tactic)</option>
+                    <option value="mate_in_1">Chiếu hết 1 nước</option>
+                    <option value="mate_in_2">Chiếu hết 2 nước</option>
+                    <option value="mate_in_3">Chiếu hết 3 nước</option>
+                    <option value="endgame">Tàn cuộc (Endgame)</option>
+                    <option value="opening">Khai cuộc (Opening)</option>
+                    <option value="strategy">Chiến lược (Strategy)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Rating đề xuất
+                  </label>
+                  <input
+                    type="number"
+                    value={editRating}
+                    onChange={(e) => setEditRating(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Nước đi lời giải (dạng UCI, cách nhau bằng dấu phẩy)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e2e4, e7e5, g1f3"
+                  value={editSolutionUci}
+                  onChange={(e) => setEditSolutionUci(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                />
+                <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  Ví dụ: e2e4, e7e5 (Định dạng ô đi đến ô đến)
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Mô tả / Hướng dẫn giải
+                </label>
+                <textarea
+                  rows={2}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingPuzzle(null);
+                  }}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-sm font-medium transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition disabled:opacity-50"
+                >
+                  {updating ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-5">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-700 pb-3">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-400" />
@@ -289,6 +548,27 @@ export default function Puzzles() {
             </div>
 
             <form onSubmit={handleCreate} className="space-y-4">
+              {/* Live Preview Chessboard */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-900/60 p-3 rounded-xl border border-slate-700/60">
+                <div className="w-36 h-36 shrink-0 rounded-lg overflow-hidden border border-slate-700 shadow-md">
+                  <Chessboard
+                    key={`create-preview-${fen}`}
+                    options={{
+                      id: 'create-preview-board',
+                      position: fen,
+                      allowDragging: false,
+                    }}
+                  />
+                </div>
+                <div className="flex-1 text-xs text-slate-400 space-y-1">
+                  <p className="font-semibold text-slate-200">Xem trước thế cờ:</p>
+                  <p>Bàn cờ tự động cập nhật theo chuỗi FEN bên dưới.</p>
+                  <p className="text-amber-400/90 font-mono break-all text-[11px] line-clamp-3">
+                    {fen || 'Chưa có FEN'}
+                  </p>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Tiêu đề bài tập *
@@ -327,10 +607,10 @@ export default function Puzzles() {
                     onChange={(e) => setFormDifficulty(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
                   >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                    <option value="master">Master</option>
+                    <option value="easy">Dễ (Easy)</option>
+                    <option value="medium">Trung bình (Medium)</option>
+                    <option value="hard">Khó (Hard)</option>
+                    <option value="expert">Chuyên gia (Expert)</option>
                   </select>
                 </div>
                 <div>
@@ -342,12 +622,13 @@ export default function Puzzles() {
                     onChange={(e) => setFormType(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none"
                   >
-                    <option value="tactics">Tactics</option>
-                    <option value="mate_in_1">Mate in 1</option>
-                    <option value="mate_in_2">Mate in 2</option>
-                    <option value="fork">Fork</option>
-                    <option value="pin">Pin</option>
-                    <option value="endgame">Endgame</option>
+                    <option value="tactic">Chiến thuật (Tactic)</option>
+                    <option value="mate_in_1">Chiếu hết 1 nước</option>
+                    <option value="mate_in_2">Chiếu hết 2 nước</option>
+                    <option value="mate_in_3">Chiếu hết 3 nước</option>
+                    <option value="endgame">Tàn cuộc (Endgame)</option>
+                    <option value="opening">Khai cuộc (Opening)</option>
+                    <option value="strategy">Chiến lược (Strategy)</option>
                   </select>
                 </div>
                 <div>

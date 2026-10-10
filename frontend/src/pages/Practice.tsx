@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Chess } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import {
   Lightbulb, RotateCcw, ArrowRight, CheckCircle2,
@@ -30,6 +30,15 @@ export default function Practice() {
   const [hintText, setHintText] = useState<string | null>(null);
   const [attemptResult, setAttemptResult] = useState<AttemptResult | null>(null);
   const [timeSeconds, setTimeSeconds] = useState(0);
+
+  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+  const [legalMoves, setLegalMoves] = useState<string[]>([]);
+
+  const initialOrientation = useMemo<'white' | 'black'>(() => {
+    if (!puzzle?.fen) return 'white';
+    const parts = puzzle.fen.split(' ');
+    return parts.length > 1 && parts[1] === 'b' ? 'black' : 'white';
+  }, [puzzle?.fen]);
 
   // Timer
   useEffect(() => {
@@ -78,6 +87,8 @@ export default function Practice() {
       setHintText(null);
       setAttemptResult(null);
       setTimeSeconds(0);
+      setSelectedSquare(null);
+      setLegalMoves([]);
     } catch {
       toast.error('Invalid FEN position');
     }
@@ -161,6 +172,8 @@ export default function Practice() {
 
   const onDrop = (sourceSquare: string, targetSquare: string) => {
     if (isSolved || isFailed) return false;
+    setSelectedSquare(null);
+    setLegalMoves([]);
     const move = makeAMove({
       from: sourceSquare,
       to: targetSquare,
@@ -228,6 +241,88 @@ export default function Practice() {
 
   const turn = game.turn() === 'w' ? 'Trắng đi' : 'Đen đi';
 
+  const handleSquareClick = useCallback(
+    (square: string) => {
+      if (isSolved || isFailed || !puzzle) return;
+
+      if (selectedSquare && legalMoves.includes(square)) {
+        makeAMove({
+          from: selectedSquare,
+          to: square,
+          promotion: 'q',
+        });
+        setSelectedSquare(null);
+        setLegalMoves([]);
+        return;
+      }
+
+      const piece = game.get(square as Square);
+      if (piece && piece.color === game.turn()) {
+        setSelectedSquare(square);
+        const moves = game.moves({ square: square as Square, verbose: true });
+        setLegalMoves(moves.map((m: any) => m.to));
+      } else {
+        setSelectedSquare(null);
+        setLegalMoves([]);
+      }
+    },
+    [game, isSolved, isFailed, puzzle, selectedSquare, legalMoves]
+  );
+
+  const customSquareStyles = useMemo(() => {
+    const styles: Record<string, React.CSSProperties> = {};
+    if (selectedSquare) {
+      styles[selectedSquare] = { backgroundColor: 'rgba(255, 255, 0, 0.4)' };
+    }
+    for (const sq of legalMoves) {
+      const hasPiece = game.get(sq as Square);
+      if (hasPiece) {
+        styles[sq] = {
+          background: 'radial-gradient(circle, transparent 55%, rgba(0, 0, 0, 0.3) 55%)',
+          borderRadius: '50%',
+        };
+      } else {
+        styles[sq] = {
+          background: 'radial-gradient(circle, rgba(0, 0, 0, 0.25) 25%, transparent 25%)',
+        };
+      }
+    }
+    if (game.inCheck() || game.isCheck()) {
+      const turnColor = game.turn();
+      const board = game.board();
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = board[r][c];
+          if (piece && piece.type === 'k' && piece.color === turnColor) {
+            const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
+            styles[sq] = {
+              ...styles[sq],
+              backgroundColor: 'rgba(255, 0, 0, 0.5)',
+              boxShadow: 'inset 0 0 15px 5px rgba(255, 0, 0, 0.6)',
+            };
+          }
+        }
+      }
+    }
+    if (game.isGameOver() && game.isCheckmate()) {
+      const turnColor = game.turn();
+      const board = game.board();
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = board[r][c];
+          if (piece && piece.type === 'k' && piece.color === turnColor) {
+            const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
+            styles[sq] = {
+              backgroundColor: 'rgba(128, 128, 128, 0.7)',
+              boxShadow: 'inset 0 0 20px 10px rgba(0, 0, 0, 0.5)',
+            };
+          }
+        }
+      }
+    }
+    return styles;
+  }, [selectedSquare, legalMoves, game]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-32">
@@ -282,17 +377,32 @@ export default function Practice() {
         <div className="lg:col-span-7 flex flex-col items-center">
           <div className="w-full max-w-125 aspect-square bg-slate-900 rounded-2xl p-3 shadow-2xl border border-slate-700 relative">
             <Chessboard
+              key={puzzle?.id || 'default-board'}
               options={{
+                id: `PracticeBoard-${puzzle?.id || 'default'}`,
                 position: game.fen(),
+                boardOrientation: initialOrientation,
+                allowDragging: !isSolved && !isFailed,
+                canDragPiece: ({ piece }) => {
+                  if (isSolved || isFailed) return false;
+                  return piece.pieceType.startsWith(game.turn());
+                },
                 onPieceDrop: ({ sourceSquare, targetSquare }) => {
                   if (!targetSquare) return false;
                   return onDrop(sourceSquare, targetSquare);
                 },
-                boardOrientation: game.turn() === 'b' ? 'black' : 'white',
+                onSquareClick: ({ square }) => {
+                  handleSquareClick(square);
+                },
+                onPieceClick: ({ square }) => {
+                  if (square) handleSquareClick(square);
+                },
+                squareStyles: customSquareStyles,
                 boardStyle: {
                   borderRadius: '12px',
                   boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)',
                 },
+                showNotation: true,
               }}
             />
 

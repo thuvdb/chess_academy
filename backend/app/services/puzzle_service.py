@@ -73,6 +73,40 @@ def validate_puzzle_fen(fen: str) -> tuple[bool, str | None]:
         return False, str(exc)
 
 
+DIFFICULTY_MAP = {
+    "beginner": "easy",
+    "easy": "easy",
+    "intermediate": "medium",
+    "medium": "medium",
+    "advanced": "hard",
+    "hard": "hard",
+    "master": "expert",
+    "expert": "expert",
+}
+
+PUZZLE_TYPE_MAP = {
+    "tactics": "tactic",
+    "tactic": "tactic",
+    "endgame": "endgame",
+    "opening": "opening",
+    "strategy": "strategy",
+    "custom": "custom",
+    "mate_in_1": "mate_in_1",
+    "mate_in_2": "mate_in_2",
+    "mate_in_3": "mate_in_3",
+    "fork": "tactic",
+    "pin": "tactic",
+}
+
+SOURCE_MAP = {
+    "manual_fen": "manual_fen",
+    "manual_pgn": "manual_pgn",
+    "ai_scanned": "ai_scanned",
+    "book_scan": "ai_scanned",
+    "imported": "imported",
+}
+
+
 # ── CRUD Operations ──────────────────────────────────────────
 
 async def create_puzzle(
@@ -84,6 +118,10 @@ async def create_puzzle(
     if not valid:
         raise ValueError(f"Invalid FEN: {err}")
 
+    diff = DIFFICULTY_MAP.get((data.difficulty or "").lower(), "easy")
+    p_type = PUZZLE_TYPE_MAP.get((data.puzzle_type or "").lower(), "tactic")
+    src = SOURCE_MAP.get((data.source or "").lower(), "manual_fen")
+
     puzzle = Puzzle(
         center_id=data.center_id,
         created_by=created_by,
@@ -91,9 +129,9 @@ async def create_puzzle(
         description=data.description,
         fen=data.fen,
         pgn=data.pgn,
-        difficulty=data.difficulty,
-        puzzle_type=data.puzzle_type,
-        source=data.source or PuzzleSource.MANUAL_FEN.value,
+        difficulty=diff,
+        puzzle_type=p_type,
+        source=src,
         tags=data.tags,
         rating=data.rating,
         board_image_url=data.board_image_url,
@@ -143,9 +181,11 @@ async def list_puzzles(
     stmt = select(Puzzle).options(selectinload(Puzzle.solutions))
 
     if difficulty:
-        stmt = stmt.where(Puzzle.difficulty == difficulty)
+        norm_diff = DIFFICULTY_MAP.get(difficulty.lower(), difficulty.lower())
+        stmt = stmt.where(Puzzle.difficulty == norm_diff)
     if puzzle_type:
-        stmt = stmt.where(Puzzle.puzzle_type == puzzle_type)
+        norm_type = PUZZLE_TYPE_MAP.get(puzzle_type.lower(), puzzle_type.lower())
+        stmt = stmt.where(Puzzle.puzzle_type == norm_type)
     if center_id:
         stmt = stmt.where(or_(Puzzle.center_id == center_id, Puzzle.center_id.is_(None)))
     if search:
@@ -180,9 +220,9 @@ async def update_puzzle(
     if data.pgn is not None:
         puzzle.pgn = data.pgn
     if data.difficulty is not None:
-        puzzle.difficulty = data.difficulty
+        puzzle.difficulty = DIFFICULTY_MAP.get(data.difficulty.lower(), "easy")
     if data.puzzle_type is not None:
-        puzzle.puzzle_type = data.puzzle_type
+        puzzle.puzzle_type = PUZZLE_TYPE_MAP.get(data.puzzle_type.lower(), "tactic")
     if data.tags is not None:
         puzzle.tags = data.tags
     if data.rating is not None:
@@ -229,6 +269,7 @@ async def create_puzzle_from_scan(
     db: AsyncSession,
     user_id: uuid.UUID,
     req: CreatePuzzleFromScanRequest,
+    center_id: Optional[uuid.UUID] = None,
 ) -> Puzzle:
     """Converts an approved ScanResult into a Puzzle."""
     scan_stmt = select(ScanResult).where(ScanResult.id == req.scan_result_id)
@@ -236,6 +277,12 @@ async def create_puzzle_from_scan(
     scan_res = res.scalar_one_or_none()
     if not scan_res:
         raise ValueError("Scan result not found")
+
+    # If already created, return existing
+    if scan_res.puzzle_id:
+        existing = await get_puzzle(db, scan_res.puzzle_id)
+        if existing:
+            return existing
 
     target_fen = scan_res.fen_final or scan_res.fen_candidate
     if not target_fen:
@@ -247,10 +294,11 @@ async def create_puzzle_from_scan(
         fen=target_fen,
         difficulty=req.difficulty,
         puzzle_type=req.puzzle_type,
-        source=PuzzleSource.BOOK_SCAN.value,
+        source=PuzzleSource.AI_SCANNED.value,
         tags=req.tags,
         board_image_url=scan_res.board_image_url,
         solutions=req.solutions,
+        center_id=center_id,
     )
 
     puzzle = await create_puzzle(db, created_by=user_id, data=puzzle_data)

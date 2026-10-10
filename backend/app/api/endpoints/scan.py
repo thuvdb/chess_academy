@@ -257,16 +257,87 @@ async def approve_result(
 
 
 
+    target_fen = result.fen_final or result.fen_candidate
     await scan_service.update_result_review(
         db=db,
         result=result,
         reviewed_by=current_user.id,
-        fen_final=result.fen_final or result.fen_candidate,
+        fen_final=target_fen,
         review_status=ReviewStatus.APPROVED.value,
     )
+
+    # Auto-create puzzle in Puzzle Bank if not already created
+    if target_fen and not result.puzzle_id:
+        from app.schemas.puzzle import CreatePuzzleFromScanRequest
+        from app.services import puzzle_service
+        try:
+            puzzle = await puzzle_service.create_puzzle_from_scan(
+                db=db,
+                user_id=current_user.id,
+                req=CreatePuzzleFromScanRequest(
+                    scan_result_id=result.id,
+                    title=f"{job.file_name} - Trang {result.page_number} / Bàn {result.board_index}",
+                    description=f"Quét tự động từ tài liệu {job.file_name} (Trang {result.page_number}, Bàn {result.board_index})",
+                    difficulty="easy",
+                    puzzle_type="tactic",
+                ),
+                center_id=job.center_id or current_user.center_id,
+            )
+            result.puzzle_id = puzzle.id
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Auto create puzzle on approve failed: %s", exc)
+
     await db.commit()
     await db.refresh(result)
     return result
+
+
+@router.post("/jobs/{job_id}/save-approved", response_model=dict)
+async def save_approved_puzzles_for_job(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Converts all approved scan results in a job that don't have a puzzle yet into puzzles."""
+    if current_user.role not in ("super_admin", "admin", "teacher"):
+        raise HTTPException(403, detail="Only teachers can save puzzles from scan")
+
+    job = await scan_service.get_scan_job(db, job_id)
+    if not job:
+        raise HTTPException(404, detail="Scan job not found")
+    ensure_scan_job_access(job, current_user)
+
+    results = await scan_service.get_job_results(db, job_id)
+    saved_count = 0
+    from app.schemas.puzzle import CreatePuzzleFromScanRequest
+    from app.services import puzzle_service
+
+    for r in results:
+        if r.review_status == ReviewStatus.APPROVED.value and not r.puzzle_id:
+            target_fen = r.fen_final or r.fen_candidate
+            if target_fen:
+                try:
+                    puzzle = await puzzle_service.create_puzzle_from_scan(
+                        db=db,
+                        user_id=current_user.id,
+                        req=CreatePuzzleFromScanRequest(
+                            scan_result_id=r.id,
+                            title=f"{job.file_name} - Trang {r.page_number} / Bàn {r.board_index}",
+                            description=f"Quét tự động từ tài liệu {job.file_name} (Trang {r.page_number}, Bàn {r.board_index})",
+                            difficulty="easy",
+                            puzzle_type="tactic",
+                        ),
+                        center_id=job.center_id or current_user.center_id,
+                    )
+                    r.puzzle_id = puzzle.id
+                    saved_count += 1
+                except Exception as exc:
+                    import logging
+                    logging.getLogger(__name__).warning("Batch create puzzle failed for %s: %s", r.id, exc)
+
+    await db.commit()
+    return {"message": f"Successfully created {saved_count} puzzle(s)", "saved_count": saved_count}
 
 
 @router.post("/results/{result_id}/reject", response_model=ScanResultRead)
