@@ -163,10 +163,18 @@ def test_class_access_other_center_returns_404():
 
 
 def test_class_access_no_center_user_denied():
-    """F2: Users without a center_id cannot access any class."""
+    """F2: User without a center_id cannot access a class that HAS a center_id."""
     with pytest.raises(HTTPException) as exc:
-        ensure_class_access(_cls(), _user("teacher", center_id=None))
+        ensure_class_access(_cls(center_id=CENTER_A), _user("teacher", center_id=None))
     assert exc.value.status_code == 404
+
+
+def test_class_access_unscoped_class_all_roles_allowed():
+    """Legacy/unscoped classes (center_id=NULL) are accessible to any authenticated user."""
+    for role in ("admin", "teacher", "student", "parent"):
+        ensure_class_access(_cls(center_id=None), _user(role))
+    # Even users without a center can access unscoped classes
+    ensure_class_access(_cls(center_id=None), _user("teacher", center_id=None))
 
 
 # ── CAMS-0014: Class ownership — F3 (teacher write gate) ─────
@@ -177,8 +185,10 @@ def test_class_ownership_super_admin_always_allowed():
 
 
 def test_class_ownership_admin_same_center_allowed():
-    """F3: admin can manage any class within own center."""
+    """F3: admin can manage any class within own center or unscoped classes."""
     ensure_class_ownership(_cls(), _user("admin"))
+    # Unscoped (legacy) class should also be manageable by admin
+    ensure_class_ownership(_cls(center_id=None), _user("admin"))
 
 
 def test_class_ownership_admin_other_center_returns_404():
@@ -192,6 +202,8 @@ def test_class_ownership_teacher_owns_class_allowed():
     """F3: teacher who owns the class (teacher_id == user.id) is allowed."""
     teacher = _user("teacher", uid=TEACHER_A_ID)
     ensure_class_ownership(_cls(teacher_id=TEACHER_A_ID), teacher)
+    # Also works for unscoped (legacy) classes
+    ensure_class_ownership(_cls(center_id=None, teacher_id=TEACHER_A_ID), teacher)
 
 
 def test_class_ownership_teacher_not_owner_denied_403():

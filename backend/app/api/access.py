@@ -62,13 +62,19 @@ def ensure_class_access(cls_dict: dict, user: User) -> None:
 
     Rules (CAMS-0014):
       - super_admin: cross-center access.
-      - admin: own center only.
-      - teacher / student / parent: own center only.
+      - Classes with center_id = NULL are treated as "unscoped" (legacy/global) and
+        accessible to any authenticated user — prevents regression for classes created
+        before CAMS-0014 deployed center scoping.
+      - admin: own center only (when class has a center_id).
+      - teacher / student / parent: own center only (when class has a center_id).
     Returns 404 (not 403) to avoid leaking class existence across centers.
     """
     if user.role == "super_admin":
         return
     class_center = cls_dict.get("center_id")
+    # Legacy / unscoped classes (no center_id) are visible to all authenticated users.
+    if class_center is None:
+        return
     if same_center(user, class_center):
         return
     raise HTTPException(404, detail="Class not found")
@@ -79,19 +85,24 @@ def ensure_class_ownership(cls_dict: dict, user: User) -> None:
 
     Rules (CAMS-0014 F3):
       - super_admin: always allowed.
-      - admin: allowed for classes within own center.
-      - teacher: only own classes (teacher_id == user.id) AND same center.
+      - admin: allowed for classes within own center (or unscoped classes).
+      - teacher: only own classes (teacher_id == user.id).
+        Center check is skipped for unscoped (center_id = NULL) classes to avoid
+        blocking teachers on legacy data.
     """
     if user.role == "super_admin":
         return
     class_center = cls_dict.get("center_id")
     if user.role == "admin":
-        if same_center(user, class_center):
+        # Allow admin to manage unscoped (legacy) classes or own-center classes.
+        if class_center is None or same_center(user, class_center):
             return
         raise HTTPException(404, detail="Class not found")
-    # teacher — must own the class AND be same center
+    # teacher — must be the assigned teacher; center check only when class has a center_id
     if user.role == "teacher":
-        if cls_dict.get("teacher_id") == user.id and same_center(user, class_center):
+        is_owner = cls_dict.get("teacher_id") == user.id
+        center_ok = class_center is None or same_center(user, class_center)
+        if is_owner and center_ok:
             return
         raise HTTPException(403, detail="You can only manage your own classes")
     raise HTTPException(403, detail="Insufficient permissions")
