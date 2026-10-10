@@ -140,17 +140,35 @@ async def create_puzzle(
     await db.flush()
 
     # Add solutions if any
-    for sol in data.solutions:
-        solution = PuzzleSolution(
-            puzzle_id=puzzle.id,
-            move_order=sol.move_order,
-            move_uci=sol.move_uci,
-            move_san=sol.move_san,
-            is_best_move=sol.is_best_move,
-            alternative_moves=sol.alternative_moves,
-            explanation=sol.explanation,
-        )
-        db.add(solution)
+    if data.solutions:
+        for sol in data.solutions:
+            solution = PuzzleSolution(
+                puzzle_id=puzzle.id,
+                move_order=sol.move_order,
+                move_uci=sol.move_uci,
+                move_san=sol.move_san,
+                is_best_move=sol.is_best_move,
+                alternative_moves=sol.alternative_moves,
+                explanation=sol.explanation,
+            )
+            db.add(solution)
+    else:
+        # Auto-generate solutions with Stockfish if not provided
+        try:
+            from app.services.stockfish_service import generate_puzzle_solutions
+            auto_sols = generate_puzzle_solutions(data.fen)
+            for s in auto_sols:
+                solution = PuzzleSolution(
+                    puzzle_id=puzzle.id,
+                    move_order=s["move_order"],
+                    move_uci=s["move_uci"],
+                    move_san=s["move_san"],
+                    is_best_move=s["is_best_move"],
+                    explanation=s.get("explanation"),
+                )
+                db.add(solution)
+        except Exception as exc:
+            logger.warning(f"Could not auto-generate solutions: {exc}")
 
     await db.flush()
     await db.refresh(puzzle)
@@ -166,7 +184,33 @@ async def get_puzzle(
         .where(Puzzle.id == puzzle_id)
     )
     result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    puzzle = result.scalar_one_or_none()
+    if puzzle and (not puzzle.solutions or len(puzzle.solutions) == 0):
+        try:
+            from app.services.stockfish_service import generate_puzzle_solutions
+            auto_sols = generate_puzzle_solutions(puzzle.fen)
+            if auto_sols:
+                for s in auto_sols:
+                    solution = PuzzleSolution(
+                        puzzle_id=puzzle.id,
+                        move_order=s["move_order"],
+                        move_uci=s["move_uci"],
+                        move_san=s["move_san"],
+                        is_best_move=s["is_best_move"],
+                        explanation=s.get("explanation"),
+                    )
+                    db.add(solution)
+                await db.commit()
+                stmt_reload = (
+                    select(Puzzle)
+                    .options(selectinload(Puzzle.solutions))
+                    .where(Puzzle.id == puzzle_id)
+                )
+                res_reload = await db.execute(stmt_reload)
+                puzzle = res_reload.scalar_one_or_none()
+        except Exception as exc:
+            logger.warning(f"Could not auto-generate solutions on get_puzzle: {exc}")
+    return puzzle
 
 
 async def list_puzzles(

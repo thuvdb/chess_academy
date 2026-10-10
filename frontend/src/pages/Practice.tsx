@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  getPuzzles, getPuzzle, submitPuzzleAttempt,
+  getPuzzles, getPuzzle, submitPuzzleAttempt, getAssignmentById,
   type PuzzleItem, type AttemptResult
 } from '../lib/puzzleApi';
 
@@ -55,15 +55,36 @@ export default function Practice() {
     async function loadData() {
       setLoading(true);
       try {
+        if (assignmentIdParam) {
+          const [asm, allPuz] = await Promise.all([
+            getAssignmentById(assignmentIdParam),
+            getPuzzles({ limit: 100 }),
+          ]);
+          if (asm.puzzle_ids && asm.puzzle_ids.length > 0) {
+            const asmPuzzles = allPuz.filter((p) => asm.puzzle_ids?.includes(p.id));
+            if (asmPuzzles.length > 0) {
+              setPuzzles(asmPuzzles);
+              const targetId = puzzleIdParam || asm.puzzle_ids[0];
+              const targetIdx = asmPuzzles.findIndex((p) => p.id === targetId);
+              const activeIdx = targetIdx >= 0 ? targetIdx : 0;
+              setCurrentPuzzleIndex(activeIdx);
+              setPuzzle(asmPuzzles[activeIdx]);
+              return;
+            }
+          }
+        }
+
         if (puzzleIdParam) {
           const single = await getPuzzle(puzzleIdParam);
           setPuzzle(single);
           setPuzzles([single]);
+          setCurrentPuzzleIndex(0);
         } else {
           const list = await getPuzzles({ limit: 20 });
           setPuzzles(list);
           if (list.length > 0) {
             setPuzzle(list[0]);
+            setCurrentPuzzleIndex(0);
           }
         }
       } catch {
@@ -73,7 +94,7 @@ export default function Practice() {
       }
     }
     loadData();
-  }, [puzzleIdParam]);
+  }, [puzzleIdParam, assignmentIdParam]);
 
   // Setup game board when puzzle changes
   const initBoard = useCallback((p: PuzzleItem) => {
@@ -157,12 +178,12 @@ export default function Practice() {
             handleCompleted(newUcis, newSans, false);
           }
         } else {
-          // If no specific expected move, mark as solved
-          handleCompleted(newUcis, newSans, true);
+          // No expected move configured for this order
+          handleCompleted(newUcis, newSans, false);
         }
       } else {
-        // Fallback for puzzles without predefined solutions
-        handleCompleted(newUcis, newSans, true);
+        // Puzzles without solutions are marked as failed until verified by server
+        handleCompleted(newUcis, newSans, false);
       }
 
       return true;
@@ -234,10 +255,19 @@ export default function Practice() {
   const handleNextPuzzle = () => {
     if (puzzles.length > currentPuzzleIndex + 1) {
       const nextIdx = currentPuzzleIndex + 1;
+      const nextPuz = puzzles[nextIdx];
       setCurrentPuzzleIndex(nextIdx);
-      setPuzzle(puzzles[nextIdx]);
+      setPuzzle(nextPuz);
+      if (assignmentIdParam) {
+        navigate(`/practice?puzzleId=${nextPuz.id}&assignmentId=${assignmentIdParam}`, { replace: true });
+      }
     } else {
-      toast('Đã hoàn thành hết danh sách bài tập hiện tại!');
+      if (assignmentIdParam) {
+        toast.success('🎉 Chúc mừng! Bạn đã hoàn thành toàn bộ bài tập về nhà!');
+        navigate(`/assignments/${assignmentIdParam}`);
+      } else {
+        toast('Đã hoàn thành hết danh sách bài tập hiện tại!');
+      }
     }
   };
 
@@ -355,13 +385,20 @@ export default function Practice() {
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Top Bar */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate(assignmentIdParam ? `/assignments/${assignmentIdParam}` : '/puzzles')}
-          className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {assignmentIdParam ? 'Về bài tập về nhà' : 'Về danh sách bài tập'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(assignmentIdParam ? `/assignments/${assignmentIdParam}` : '/puzzles')}
+            className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {assignmentIdParam ? 'Về bài tập về nhà' : 'Về danh sách bài tập'}
+          </button>
+          {assignmentIdParam && puzzles.length > 0 && (
+            <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2.5 py-1 rounded-lg font-semibold">
+              Thế cờ {currentPuzzleIndex + 1} / {puzzles.length}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-4 text-sm text-slate-300">
           <span className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 px-3 py-1 rounded-full">
             <Clock className="w-4 h-4 text-indigo-400" />
@@ -431,7 +468,9 @@ export default function Practice() {
                     onClick={handleNextPuzzle}
                     className="flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium transition shadow-lg shadow-emerald-600/30"
                   >
-                    Bài kế tiếp
+                    {assignmentIdParam && currentPuzzleIndex + 1 >= puzzles.length
+                      ? 'Hoàn thành bài tập'
+                      : `Bài kế tiếp (${currentPuzzleIndex + 2}/${puzzles.length})`}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

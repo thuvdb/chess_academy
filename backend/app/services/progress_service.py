@@ -94,18 +94,21 @@ async def submit_attempt(
 
     is_correct = False
     if expected_ucis and user_ucis:
-        # Check if the sequence matches the expected sequence exactly
-        if user_ucis[:len(expected_ucis)] == expected_ucis:
+        # Sequence matches expected solution only if user completed the entire line
+        if len(user_ucis) >= len(expected_ucis) and user_ucis[:len(expected_ucis)] == expected_ucis:
             is_correct = True
         else:
-            # If not exact match, let Stockfish evaluate if it's still a winning move/mate
+            # If sequence is different or partial, let Stockfish evaluate if it delivered checkmate or winning mate
             from app.services.stockfish_service import evaluate_alternate_solution
             if evaluate_alternate_solution(puzzle.fen, user_ucis):
                 is_correct = True
-                
+
     elif not expected_ucis and user_ucis:
-        # If no solutions specified in DB, accept first legal move
-        is_correct = True
+        from app.services.stockfish_service import evaluate_alternate_solution
+        if evaluate_alternate_solution(puzzle.fen, user_ucis):
+            is_correct = True
+        else:
+            is_correct = False
 
     # 4. Create attempt record
     attempt_no = progress.attempts + 1
