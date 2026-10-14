@@ -75,6 +75,10 @@ class User(UUIDMixin, TimestampMixin, Base):
         viewonly=True,
     )
 
+    @property
+    def center_name(self) -> str | None:
+        return self.center.name if self.center else None
+
 
 # Association table — parent ↔ student (many-to-many)
 from sqlalchemy import Column, Table  # noqa: E402

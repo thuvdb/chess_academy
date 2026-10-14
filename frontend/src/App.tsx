@@ -21,6 +21,7 @@ import LiveGame from './pages/LiveGame';
 import Invoices from './pages/Invoices';
 import Profile from './pages/Profile';
 import Members from './pages/Members';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
             <Route path="/tournaments/:id/game/:gameId" element={<LiveGame />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/members" element={<Members />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
 

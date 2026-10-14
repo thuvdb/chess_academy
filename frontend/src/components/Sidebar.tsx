@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Users,
   UserCog,
+  Settings,
 } from 'lucide-react';
 
 interface NavItem {
@@ -26,7 +27,7 @@ const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/classes', label: 'Classes', icon: BookOpen },
   { to: '/schedule', label: 'Schedule', icon: Calendar },
-  { to: '/scanner', label: 'AI Scanner', icon: ScanSearch, roles: ['super_admin', 'admin', 'center_admin', 'teacher'] },
+  { to: '/scanner', label: 'AI Scanner', icon: ScanSearch, roles: ['super_admin', 'admin', 'center_admin'] },
   { to: '/puzzles', label: 'Puzzle Bank', icon: Swords },
   { to: '/practice', label: 'Luyện tập', icon: Swords },
   { to: '/assignments', label: 'Bài tập về nhà', icon: ClipboardList },
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { to: '/fee-plans', label: 'Fee Plans', icon: ClipboardList, roles: ['super_admin', 'admin', 'center_admin'] },
   { to: '/invoices', label: 'Invoices', icon: ClipboardList },
   { to: '/tournaments', label: 'Tournaments', icon: Trophy },
+  { to: '/settings', label: 'Cài đặt', icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -87,7 +89,7 @@ export default function Sidebar() {
             )}
           </NavLink>
         ))}
-        {(user?.role === 'super_admin' || user?.role === 'admin') && (
+        {(user?.role === 'super_admin' || user?.role === 'center_admin' || user?.role === 'admin') && (
           <NavLink
             to="/members"
             className={({ isActive }) =>
@@ -112,21 +114,27 @@ export default function Sidebar() {
       {/* User + Logout */}
       <div className="px-3 pb-4 border-t border-slate-800 pt-4">
         <div 
-          onClick={() => navigate('/profile')}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-800 mb-2 cursor-pointer hover:bg-slate-700 transition-colors"
+          onClick={() => navigate('/settings')}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/80 border border-slate-700/50 mb-2 cursor-pointer hover:bg-slate-800 hover:border-slate-600 transition-all"
         >
-          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="w-8 h-8 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
             {user?.avatar_url ? <img src={user.avatar_url} className="w-8 h-8 rounded-full object-cover" /> : user?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-semibold truncate">{user?.full_name}</p>
-            <p className="text-slate-400 text-xs capitalize">{user?.role}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-slate-400 text-[10px] capitalize font-medium">{user?.role?.replace('_', ' ')}</span>
+              <span className="text-slate-600 text-[9px]">•</span>
+              <span className="text-amber-400/90 text-[10px] font-semibold truncate max-w-[85px]">
+                {user?.role === 'super_admin' ? 'Toàn hệ thống' : (user?.center_name || 'Trung tâm')}
+              </span>
+            </div>
           </div>
-          <UserCog className="w-4 h-4 text-slate-400" />
+          <UserCog className="w-4 h-4 text-slate-400 shrink-0" />
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-sm"
+          className="w-full flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-xs font-medium"
         >
           <LogOut className="w-4 h-4" />
           Sign Out

@@ -9,6 +9,7 @@ export interface User {
   avatar_url?: string;
   elo_rating: number;
   center_id?: string;
+  center_name?: string | null;
 }
 
 interface AuthState {

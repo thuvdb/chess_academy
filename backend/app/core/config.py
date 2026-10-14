@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     VIETQR_ACCOUNT_NO: str = "1234567890"
     VIETQR_ACCOUNT_NAME: str = "CAMS CHESS ACADEMY"
 
+    # --- Auth & Registration ---
+    ALLOW_PUBLIC_REGISTER: bool = False
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
