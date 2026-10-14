@@ -87,10 +87,20 @@ def generate_puzzle_solutions(fen: str, depth: int = 18, max_plies: int = 8) -> 
         return []
 
 
-def evaluate_alternate_solution(fen: str, user_moves: list[str]) -> bool:
+def evaluate_alternate_solution(
+    fen: str,
+    user_moves: list[str],
+    require_mate: bool = False,
+) -> bool:
     """
-    Evaluates if the user's sequence of moves leads to a forced mate or a +5 advantage.
-    Returns True if it's a valid alternate solution, False otherwise.
+    Đánh giá một dãy nước KHÔNG khớp lời giải đã lưu.
+
+    Chỉ dùng cho bài CHƯA chứng minh được mate (chiến thuật thắng quân, bài cũ).
+    Bài mate đã chứng minh được chấm bằng cây biến thể trong
+    app/services/mate_solver.py — xem progress_service._grade_attempt.
+
+    require_mate=True: chỉ nhận chiếu hết hoặc mate cưỡng bức. Lợi thế vật chất
+    không bao giờ là lời giải của một bài mate, nên đừng dùng ngưỡng cp ở đó.
     """
     try:
         # 1. Replay the moves on the board
@@ -123,7 +133,7 @@ def evaluate_alternate_solution(fen: str, user_moves: list[str]) -> bool:
             if eval_result.get("value", 0) < 0:
                 return True
 
-        if eval_result.get("type") == "cp":
+        if eval_result.get("type") == "cp" and not require_mate:
             if eval_result.get("value", 0) <= -500:
                 return True
 

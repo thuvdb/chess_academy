@@ -10,8 +10,13 @@ from pydantic import BaseModel, ConfigDict
 class StudentAttemptCreate(BaseModel):
     puzzle_id: uuid.UUID
     assignment_id: uuid.UUID | None = None
+    # Toàn bộ dãy nước đã đi (cả hai bên), giữ để tương thích client cũ
     moves_uci: list[str]
     moves_san: list[str] = []
+    # Tách riêng nước của học sinh khỏi đáp trả của đối phương. Khi client chỉ
+    # gửi moves_uci, backend tự tách bằng cách replay trên bàn cờ.
+    player_moves_uci: list[str] | None = None
+    opponent_moves_uci: list[str] | None = None
     time_spent_seconds: int = 0
     hint_used: bool = False
 

@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { Chessboard } from 'react-chessboard';
 import {
   BookOpen, Plus, Search, Filter, Play, Trash2, Pencil,
-  Zap, Tag, Star, X
+  Zap, Tag, Star, X, ShieldCheck, ShieldAlert, Loader2,
+  GitBranch, ChevronRight, ChevronDown
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  getPuzzles, createPuzzle, updatePuzzle, deletePuzzle,
-  type PuzzleItem, type CreatePuzzleInput
+  getPuzzles, createPuzzle, updatePuzzle, deletePuzzle, validateSolution,
+  type PuzzleItem, type CreatePuzzleInput, type ValidateSolutionResult,
+  type PlyCheck, type SolutionTree, type SolutionTreeNode
 } from '../lib/puzzleApi';
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -21,6 +23,263 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   expert: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   master: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
 };
+
+function parseUciList(raw: string): string[] {
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/** Một nước trong báo cáo kiểm tra, kèm trạng thái hợp lệ. */
+function PlyChip({ ply }: { ply: PlyCheck }) {
+  const bad = !ply.legal || ply.forces_mate === false || !!ply.error;
+  return (
+    <span
+      title={ply.error || undefined}
+      className={`text-xs font-mono px-2 py-1 rounded border ${
+        bad
+          ? 'bg-rose-500/15 text-rose-300 border-rose-500/40'
+          : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+      }`}
+    >
+      {ply.san || ply.uci}
+    </span>
+  );
+}
+
+/**
+ * Báo cáo kiểm tra lời giải: tách hẳn nước của bên giải khỏi đáp trả của đối
+ * phương, thay vì liệt kê chung một dãy như trước.
+ */
+function SolutionReport({ check }: { check: ValidateSolutionResult | null }) {
+  if (!check) return null;
+  const solverLabel = check.player_color === 'w' ? 'Trắng' : 'Đen';
+  const defenderLabel = check.player_color === 'w' ? 'Đen' : 'Trắng';
+
+  return (
+    <div
+      className={`rounded-xl border p-3 space-y-2.5 ${
+        check.ok
+          ? 'bg-emerald-500/5 border-emerald-500/30'
+          : 'bg-rose-500/5 border-rose-500/30'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {check.ok ? (
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+        ) : (
+          <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+        )}
+        <span className={`text-xs font-semibold ${check.ok ? 'text-emerald-300' : 'text-rose-300'}`}>
+          {check.ok ? 'Lời giải đã được chứng minh' : 'Lời giải chưa hợp lệ'}
+        </span>
+        {check.mate_in ? (
+          <span className="text-[10px] font-semibold text-indigo-300 bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 rounded-full">
+            Chiếu hết sau {check.mate_in} nước · tối đa {check.expected_plies} nước trong dãy
+          </span>
+        ) : (
+          <span className="text-[10px] font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+            Không có chiếu hết cưỡng bức
+          </span>
+        )}
+      </div>
+
+      {(check.player_moves.length > 0 || check.opponent_moves.length > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">
+              {solverLabel} — nước của bạn ({check.player_moves.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {check.player_moves.map((p) => <PlyChip key={p.index} ply={p} />)}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">
+              {defenderLabel} — đáp trả ({check.opponent_moves.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {check.opponent_moves.length > 0
+                ? check.opponent_moves.map((p) => <PlyChip key={p.index} ply={p} />)
+                : <span className="text-slate-500 text-xs italic">chưa có</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {check.errors.length > 0 && (
+        <ul className="space-y-1">
+          {check.errors.map((e, i) => (
+            <li key={i} className="text-[11px] text-rose-300 leading-snug">• {e}</li>
+          ))}
+        </ul>
+      )}
+      {check.warnings.map((w, i) => (
+        <p key={i} className="text-[11px] text-amber-300 leading-snug">• {w}</p>
+      ))}
+    </div>
+  );
+}
+
+/** Nhánh của cây biến thể hiển thị đệ quy các nước tấn công và đối thủ đáp trả. */
+function SolutionTreeNodeBranch({
+  node,
+  depth = 1,
+  side = 'w',
+  step = 1,
+}: {
+  node: SolutionTreeNode | null | undefined;
+  depth?: number;
+  side?: 'w' | 'b';
+  step?: number;
+}) {
+  if (!node || !node.player_moves || node.player_moves.length === 0) return null;
+
+  const playerSideLabel = side === 'w' ? 'Trắng' : 'Đen';
+  const defenderSideLabel = side === 'w' ? 'Đen' : 'Trắng';
+
+  return (
+    <div className="space-y-2">
+      {node.player_moves.map((pm, pmIdx) => (
+        <div key={pm.uci || pmIdx} className="space-y-1.5">
+          {/* Nước của bên tấn công / người giải */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-mono font-bold text-slate-400">
+              {step}.
+            </span>
+            <span
+              className={`text-xs font-mono font-semibold px-2.5 py-1 rounded-md border flex items-center gap-1.5 ${
+                pm.is_mate
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
+                  : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+              }`}
+            >
+              <span className="text-[10px] uppercase font-sans text-slate-400 font-normal">
+                {playerSideLabel}:
+              </span>
+              <span>{pm.san || pm.uci}</span>
+              {pm.is_mate && (
+                <span className="text-[10px] font-sans font-bold bg-emerald-500/30 text-emerald-200 px-1.5 py-0.5 rounded">
+                  Chiếu hết
+                </span>
+              )}
+            </span>
+
+            {pm.replies && pm.replies.length > 1 && (
+              <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                {pm.replies.length} biến phản đòn
+              </span>
+            )}
+          </div>
+
+          {/* Các nước đối phương có thể đáp trả */}
+          {pm.replies && pm.replies.length > 0 && (
+            <div className="ml-4 pl-3 border-l-2 border-slate-700/80 space-y-2 mt-1">
+              {pm.replies.map((reply, rIdx) => (
+                <div key={reply.uci || rIdx} className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-xs font-mono px-2 py-0.5 rounded border flex items-center gap-1.5 ${
+                        reply.is_main
+                          ? 'bg-slate-700/80 text-amber-300 border-amber-500/40'
+                          : 'bg-slate-800/80 text-slate-300 border-slate-700'
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase font-sans text-slate-400 font-normal">
+                        {defenderSideLabel}:
+                      </span>
+                      <span>{reply.san || reply.uci}</span>
+                      {reply.is_main && (
+                        <span className="text-[9px] font-sans text-amber-400 font-medium bg-amber-500/15 px-1 py-0.5 rounded">
+                          Nhánh chính
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Đệ quy nước tiếp theo của bên giải */}
+                  {reply.next && (
+                    <SolutionTreeNodeBranch
+                      node={reply.next}
+                      depth={depth + 1}
+                      side={side}
+                      step={step + 1}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Giao diện trực quan hoá cây biến thể đối kháng cho bài tập. */
+function SolutionTreeView({
+  tree,
+  playerColor = 'w',
+  mateIn,
+}: {
+  tree: SolutionTree | SolutionTreeNode | null | undefined;
+  playerColor?: 'w' | 'b';
+  mateIn?: number | null;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  if (!tree || !tree.player_moves || tree.player_moves.length === 0) {
+    return (
+      <div className="bg-slate-900/50 border border-slate-700/40 rounded-xl p-3 text-center">
+        <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <GitBranch className="w-4 h-4 text-slate-500" />
+          <span>Chưa có cây biến thể</span>
+        </div>
+        <p className="text-[11px] text-slate-500 mt-1">
+          Bấm &ldquo;Kiểm tra lời giải&rdquo; để tự động sinh và hiển thị cây biến thể đối kháng.
+        </p>
+      </div>
+    );
+  }
+
+  const colorLabel = (tree as any).player_color === 'b' || playerColor === 'b' ? 'Đen' : 'Trắng';
+  const mateCount = (tree as any).mate_in || mateIn;
+
+  return (
+    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3 space-y-2.5">
+      <div className="flex items-center justify-between border-b border-slate-700/50 pb-2">
+        <div className="flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-indigo-400" />
+          <span className="text-xs font-semibold text-slate-200">
+            Cây biến thể lời giải (Variation Tree)
+          </span>
+          {mateCount && (
+            <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              Chiếu hết {mateCount} nước ({colorLabel} đi trước)
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+        >
+          {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          {expanded ? 'Thu gọn' : 'Mở rộng'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="max-h-56 overflow-y-auto pr-1 text-xs">
+          <SolutionTreeNodeBranch
+            node={tree}
+            depth={1}
+            side={(tree as any).player_color || playerColor}
+            step={1}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Puzzles() {
   const [puzzles, setPuzzles] = useState<PuzzleItem[]>([]);
@@ -52,6 +311,40 @@ export default function Puzzles() {
   const [editSolutionUci, setEditSolutionUci] = useState('');
   const [updating, setUpdating] = useState(false);
 
+  // Kiểm tra lời giải trước khi lưu
+  const [createCheck, setCreateCheck] = useState<ValidateSolutionResult | null>(null);
+  const [editCheck, setEditCheck] = useState<ValidateSolutionResult | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const runValidate = useCallback(async (
+    fenValue: string,
+    uciValue: string,
+    typeValue: string,
+  ): Promise<ValidateSolutionResult | null> => {
+    const moves = parseUciList(uciValue);
+    if (!fenValue.trim()) {
+      toast.error('Cần nhập FEN trước khi kiểm tra');
+      return null;
+    }
+    if (moves.length === 0) {
+      toast.error('Cần nhập ít nhất một nước đi lời giải');
+      return null;
+    }
+    setChecking(true);
+    try {
+      return await validateSolution({
+        fen: fenValue.trim(),
+        moves_uci: moves,
+        puzzle_type: typeValue,
+      });
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Không kiểm tra được lời giải');
+      return null;
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
   const fetchPuzzles = useCallback(async () => {
     setLoading(true);
     try {
@@ -78,16 +371,27 @@ export default function Puzzles() {
       toast.error('Tiêu đề và FEN là bắt buộc');
       return;
     }
+
+    // Chặn ngay ở client khi lời giải chưa chứng minh được — backend cũng
+    // chặn lần nữa, nhưng báo lỗi ở đây giúp giáo viên sửa tại chỗ.
+    const moves = parseUciList(solutionUci);
+    if (moves.length > 0) {
+      const check = await runValidate(fen, solutionUci, formType);
+      setCreateCheck(check);
+      if (!check) return;
+      if (!check.ok) {
+        toast.error('Lời giải chưa hợp lệ, xem chi tiết bên dưới ô nhập');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
-      const solutions = solutionUci.trim()
-        ? solutionUci.split(',').map((move, index) => ({
-            move_order: index + 1,
-            move_uci: move.trim(),
-            move_san: move.trim(),
-            is_best_move: true,
-          }))
-        : [];
+      const solutions = moves.map((move, index) => ({
+        move_order: index + 1,
+        move_uci: move,
+        is_best_move: true,
+      }));
 
       const payload: CreatePuzzleInput = {
         title: title.trim(),
@@ -106,6 +410,7 @@ export default function Puzzles() {
       setTitle('');
       setDescription('');
       setSolutionUci('');
+      setCreateCheck(null);
       fetchPuzzles();
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể tạo bài tập');
@@ -131,6 +436,7 @@ export default function Puzzles() {
           .join(', ')
       : '';
     setEditSolutionUci(uciMoves);
+    setEditCheck(null);
     setShowEditModal(true);
   };
 
@@ -141,16 +447,25 @@ export default function Puzzles() {
       toast.error('Tiêu đề và FEN là bắt buộc');
       return;
     }
+
+    const moves = parseUciList(editSolutionUci);
+    if (moves.length > 0) {
+      const check = await runValidate(editFen, editSolutionUci, editType);
+      setEditCheck(check);
+      if (!check) return;
+      if (!check.ok) {
+        toast.error('Lời giải chưa hợp lệ, xem chi tiết bên dưới ô nhập');
+        return;
+      }
+    }
+
     setUpdating(true);
     try {
-      const solutions = editSolutionUci.trim()
-        ? editSolutionUci.split(',').map((move, index) => ({
-            move_order: index + 1,
-            move_uci: move.trim(),
-            move_san: move.trim(),
-            is_best_move: true,
-          }))
-        : [];
+      const solutions = moves.map((move, index) => ({
+        move_order: index + 1,
+        move_uci: move,
+        is_best_move: true,
+      }));
 
       const payload = {
         title: editTitle.trim(),
@@ -166,6 +481,7 @@ export default function Puzzles() {
       toast.success('Cập nhật bài tập thành công');
       setShowEditModal(false);
       setEditingPuzzle(null);
+      setEditCheck(null);
       fetchPuzzles();
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể cập nhật bài tập');
@@ -258,6 +574,7 @@ export default function Puzzles() {
               <option value="mate_in_1" className="bg-slate-800">Chiếu hết 1 nước</option>
               <option value="mate_in_2" className="bg-slate-800">Chiếu hết 2 nước</option>
               <option value="mate_in_3" className="bg-slate-800">Chiếu hết 3 nước</option>
+              <option value="mate_in_4" className="bg-slate-800">Chiếu hết 4 nước</option>
               <option value="endgame" className="bg-slate-800">Tàn cuộc (Endgame)</option>
               <option value="opening" className="bg-slate-800">Khai cuộc (Opening)</option>
               <option value="strategy" className="bg-slate-800">Chiến lược (Strategy)</option>
@@ -310,6 +627,24 @@ export default function Puzzles() {
                     <Star className="w-3 h-3 fill-current" />
                     {p.rating}
                   </span>
+                  {/* Trạng thái chứng minh lời giải — bài chưa verify bị ẩn khỏi học sinh */}
+                  {p.solution_verified ? (
+                    <span
+                      title={p.mate_in ? `Đã chứng minh: chiếu hết sau ${p.mate_in} nước` : 'Lời giải đã được chứng minh'}
+                      className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold"
+                    >
+                      <ShieldCheck className="w-3 h-3" />
+                      {p.mate_in ? `M${p.mate_in}` : 'OK'}
+                    </span>
+                  ) : (
+                    <span
+                      title={p.verification_error || 'Lời giải chưa được chứng minh — học sinh chưa nhìn thấy bài này'}
+                      className="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold"
+                    >
+                      <ShieldAlert className="w-3 h-3" />
+                      Cần rà
+                    </span>
+                  )}
                 </div>
 
                 {/* Action Buttons: Edit (Pencil) & Delete (Trash) */}
@@ -460,6 +795,7 @@ export default function Puzzles() {
                     <option value="mate_in_1">Chiếu hết 1 nước</option>
                     <option value="mate_in_2">Chiếu hết 2 nước</option>
                     <option value="mate_in_3">Chiếu hết 3 nước</option>
+                    <option value="mate_in_4">Chiếu hết 4 nước</option>
                     <option value="endgame">Tàn cuộc (Endgame)</option>
                     <option value="opening">Khai cuộc (Opening)</option>
                     <option value="strategy">Chiến lược (Strategy)</option>
@@ -486,12 +822,39 @@ export default function Puzzles() {
                   type="text"
                   placeholder="e2e4, e7e5, g1f3"
                   value={editSolutionUci}
-                  onChange={(e) => setEditSolutionUci(e.target.value)}
+                  onChange={(e) => { setEditSolutionUci(e.target.value); setEditCheck(null); }}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
                 />
-                <span className="text-[11px] text-slate-400 mt-0.5 block">
-                  Ví dụ: e2e4, e7e5 (Định dạng ô đi đến ô đến)
-                </span>
+                <div className="flex items-center justify-between mt-1 gap-3">
+                  <span className="text-[11px] text-slate-400">
+                    Gồm cả nước đáp trả của đối phương, xen kẽ theo đúng lượt đi.
+                  </span>
+                  <button
+                    type="button"
+                    disabled={checking}
+                    onClick={async () => setEditCheck(await runValidate(editFen, editSolutionUci, editType))}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                  >
+                    {checking
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Kiểm tra lời giải
+                  </button>
+                </div>
+                {editCheck && (
+                  <div className="mt-2">
+                    <SolutionReport check={editCheck} />
+                  </div>
+                )}
+
+                {/* Variation Tree View trong Edit modal */}
+                <div className="mt-3">
+                  <SolutionTreeView
+                    tree={editCheck?.solution_tree ?? editingPuzzle?.solution_tree}
+                    playerColor={editCheck?.player_color ?? (editingPuzzle?.solution_tree as any)?.player_color ?? (editingPuzzle?.fen?.split(' ')[1] === 'b' ? 'b' : 'w')}
+                    mateIn={editCheck?.mate_in ?? editingPuzzle?.mate_in}
+                  />
+                </div>
               </div>
 
               <div>
@@ -626,6 +989,7 @@ export default function Puzzles() {
                     <option value="mate_in_1">Chiếu hết 1 nước</option>
                     <option value="mate_in_2">Chiếu hết 2 nước</option>
                     <option value="mate_in_3">Chiếu hết 3 nước</option>
+                    <option value="mate_in_4">Chiếu hết 4 nước</option>
                     <option value="endgame">Tàn cuộc (Endgame)</option>
                     <option value="opening">Khai cuộc (Opening)</option>
                     <option value="strategy">Chiến lược (Strategy)</option>
@@ -652,12 +1016,41 @@ export default function Puzzles() {
                   type="text"
                   placeholder="e2e4, e7e5, g1f3"
                   value={solutionUci}
-                  onChange={(e) => setSolutionUci(e.target.value)}
+                  onChange={(e) => { setSolutionUci(e.target.value); setCreateCheck(null); }}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
                 />
-                <span className="text-[11px] text-slate-400 mt-0.5 block">
-                  Định dạng ô đi đến ô đến: e2e4, d8h4...
-                </span>
+                <div className="flex items-center justify-between mt-1 gap-3">
+                  <span className="text-[11px] text-slate-400">
+                    Gồm cả nước đáp trả của đối phương, xen kẽ theo đúng lượt đi.
+                  </span>
+                  <button
+                    type="button"
+                    disabled={checking}
+                    onClick={async () => setCreateCheck(await runValidate(fen, solutionUci, formType))}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                  >
+                    {checking
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Kiểm tra lời giải
+                  </button>
+                </div>
+                {createCheck && (
+                  <div className="mt-2">
+                    <SolutionReport check={createCheck} />
+                  </div>
+                )}
+
+                {/* Variation Tree View trong Create modal */}
+                {createCheck?.solution_tree && (
+                  <div className="mt-3">
+                    <SolutionTreeView
+                      tree={createCheck.solution_tree}
+                      playerColor={createCheck.player_color}
+                      mateIn={createCheck.mate_in}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

@@ -4,6 +4,7 @@ Pydantic schemas for Puzzle API — Sprint 4
 
 import uuid
 from datetime import datetime
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
@@ -12,7 +13,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 class PuzzleSolutionBase(BaseModel):
     move_order: int
     move_uci: str
-    move_san: str
+    # SAN do backend sinh khi replay trên bàn cờ — client không cần gửi
+    # (trước đây frontend gửi move_san = move_uci, hiển thị sai ký hiệu cờ).
+    move_san: str = ""
+    side: Literal["w", "b"] | None = None
     is_best_move: bool = True
     alternative_moves: list[str] | None = None
     explanation: str | None = None
@@ -72,6 +76,14 @@ class PuzzleRead(PuzzleBase):
     updated_at: datetime | None = None
     solutions: list[PuzzleSolutionRead] = []
 
+    # Cây biến thể: tách nước của bên tấn công khỏi mọi đáp trả của đối phương.
+    # Xem app/services/mate_solver.py để biết cấu trúc nút.
+    solution_tree: dict[str, Any] | None = None
+    mate_in: int | None = None
+    solution_verified: bool = False
+    solution_verified_at: datetime | None = None
+    verification_error: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @field_serializer("board_image_url")
@@ -88,3 +100,39 @@ class CreatePuzzleFromScanRequest(BaseModel):
     puzzle_type: str = "tactic"
     tags: list[str] | None = None
     solutions: list[PuzzleSolutionCreate] = []
+
+
+# ── Kiểm tra lời giải trước khi lưu ──────────────────────────
+
+class ValidateSolutionRequest(BaseModel):
+    fen: str = Field(..., max_length=200)
+    moves_uci: list[str] = Field(default_factory=list)
+    puzzle_type: str | None = None
+
+
+class PlyCheckRead(BaseModel):
+    index: int
+    uci: str
+    san: str | None = None
+    side: Literal["w", "b"] | None = None
+    legal: bool = False
+    is_player_move: bool = False
+    forces_mate: bool | None = None
+    error: str | None = None
+
+
+class ValidateSolutionResponse(BaseModel):
+    ok: bool
+    fen: str
+    player_color: Literal["w", "b"]
+    plies: list[PlyCheckRead] = []
+    ends_in_mate: bool = False
+    mate_in: int | None = None
+    declared_mate_in: int | None = None
+    expected_plies: int | None = None
+    errors: list[str] = []
+    warnings: list[str] = []
+    # Hai danh sách tách riêng — thay cho một mảng chung trộn lẫn hai bên
+    player_moves: list[PlyCheckRead] = []
+    opponent_moves: list[PlyCheckRead] = []
+    solution_tree: dict[str, Any] | None = None

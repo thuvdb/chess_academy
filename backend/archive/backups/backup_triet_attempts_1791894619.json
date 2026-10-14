@@ -1,0 +1,343 @@
+{
+  "submissions": [
+    {
+      "id": "c9c4383b-6940-430b-b83f-6ec5bba69e23",
+      "assignment_id": "06369618-7d0d-4cfe-b5ba-722437aeeca4",
+      "student_id": "b3fd71ef-81d9-4f17-b21b-e2c63a6c284e",
+      "attempt_no": 1,
+      "version": 1,
+      "status": "returned",
+      "total_points": 11,
+      "completed_puzzles": 1,
+      "teacher_feedback": "có cố gắng",
+      "teacher_adjustment": 0,
+      "submitted_at": "2026-10-13T08:04:28.619019+00:00",
+      "graded_at": "2026-10-13T10:07:35.504039+00:00",
+      "reopened_at": "2026-10-13T10:01:04.239989+00:00",
+      "reopen_reason": "học sinh bị lỗi đường truyền"
+    }
+  ],
+  "progress": [
+    {
+      "id": "7ccbb31e-0775-47f3-8257-a4929b6e547b",
+      "puzzle_id": "9f083ef5-4eb1-40c9-b0c7-3eb98f7d7d8e",
+      "status": "in_progress",
+      "points_earned": 0,
+      "attempts": 4
+    },
+    {
+      "id": "79e2b91c-65b8-49c8-87df-8bcbb6ebf0d2",
+      "puzzle_id": "a8f4be48-9835-4494-a2b0-7098f4fc8418",
+      "status": "in_progress",
+      "points_earned": 0,
+      "attempts": 4
+    },
+    {
+      "id": "4d307891-3cb7-4656-be54-bb22731a81cf",
+      "puzzle_id": "4957256e-2d2f-4c7e-9832-08e3f1251435",
+      "status": "solved",
+      "points_earned": 11,
+      "attempts": 5
+    },
+    {
+      "id": "f83996bd-1eef-42fd-9a22-3fc985560ee6",
+      "puzzle_id": "5fe76293-c81b-47a9-9e10-1ab1b0520738",
+      "status": "solved",
+      "points_earned": 11,
+      "attempts": 5
+    },
+    {
+      "id": "93302440-3375-4ca4-990f-7bfe9f0e2394",
+      "puzzle_id": "742179ae-c8f1-4c12-826b-1c4c8fb30116",
+      "status": "solved",
+      "points_earned": 11,
+      "attempts": 5
+    }
+  ],
+  "attempts": [
+    {
+      "id": "34ec5208-e554-40bb-87ed-82e2e7428121",
+      "progress_id": "7ccbb31e-0775-47f3-8257-a4929b6e547b",
+      "attempt_no": 1,
+      "moves_san": [
+        "Qe1"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T07:58:36.551011+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "790f775a-7a8b-42ff-ab8a-401b612779f1",
+      "progress_id": "7ccbb31e-0775-47f3-8257-a4929b6e547b",
+      "attempt_no": 2,
+      "moves_san": [
+        "Re1"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T08:00:54.148708+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "0cf6e876-85e6-450b-91c6-b38d804b4dbc",
+      "progress_id": "7ccbb31e-0775-47f3-8257-a4929b6e547b",
+      "attempt_no": 3,
+      "moves_san": [
+        "Re1"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T08:02:48.416699+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "5068aefd-378d-471f-8282-d7e75250d7e4",
+      "progress_id": "7ccbb31e-0775-47f3-8257-a4929b6e547b",
+      "attempt_no": 4,
+      "moves_san": [
+        "Re1"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T10:04:04.518843+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "c032c1ea-87fe-4089-a4d7-4db9b4ff859b",
+      "progress_id": "79e2b91c-65b8-49c8-87df-8bcbb6ebf0d2",
+      "attempt_no": 1,
+      "moves_san": [
+        "Rxe4+",
+        "Kf8",
+        "Re8+"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T07:59:14.358091+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "601fdcc0-8d4a-4d71-b71e-817b0b1c6b97",
+      "progress_id": "79e2b91c-65b8-49c8-87df-8bcbb6ebf0d2",
+      "attempt_no": 2,
+      "moves_san": [
+        "Rxe4+",
+        "Kf8",
+        "Qe1"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T08:02:20.637568+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "383386c3-821c-4629-91ac-94d513d167fc",
+      "progress_id": "79e2b91c-65b8-49c8-87df-8bcbb6ebf0d2",
+      "attempt_no": 3,
+      "moves_san": [
+        "Rxe4+",
+        "Kf8",
+        "Qd5"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T08:03:07.971746+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "a5635e50-fc63-4d01-b3df-99586753973d",
+      "progress_id": "79e2b91c-65b8-49c8-87df-8bcbb6ebf0d2",
+      "attempt_no": 4,
+      "moves_san": [
+        "Rxe4+",
+        "Kf8",
+        "Re8+"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T10:04:15.313119+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "9edccd19-b9e4-49af-bec7-79df892c07eb",
+      "progress_id": "4d307891-3cb7-4656-be54-bb22731a81cf",
+      "attempt_no": 1,
+      "moves_san": [
+        "Qg6+"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T07:23:38.777227+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "f34f8cc0-2b86-4d0c-9ad6-c74105c1d642",
+      "progress_id": "4d307891-3cb7-4656-be54-bb22731a81cf",
+      "attempt_no": 2,
+      "moves_san": [
+        "Qe8"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T07:25:16.188198+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "28e9723f-759d-4da3-b2c9-ee77e91fcbd0",
+      "progress_id": "4d307891-3cb7-4656-be54-bb22731a81cf",
+      "attempt_no": 3,
+      "moves_san": [
+        "g5#"
+      ],
+      "is_correct": true,
+      "points_earned": 12,
+      "completed_at": "2026-10-13T07:59:48.779174+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "ec9f545a-4cbb-4424-bec5-8a37d43d39fb",
+      "progress_id": "4d307891-3cb7-4656-be54-bb22731a81cf",
+      "attempt_no": 4,
+      "moves_san": [
+        "Be6"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T08:03:24.060098+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "0874ff03-d706-4267-9b6b-8905f8227b39",
+      "progress_id": "4d307891-3cb7-4656-be54-bb22731a81cf",
+      "attempt_no": 5,
+      "moves_san": [
+        "g5#"
+      ],
+      "is_correct": true,
+      "points_earned": 11,
+      "completed_at": "2026-10-13T10:04:28.800190+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "8917dc9c-38c5-4ede-8cf3-6e76feaf85b7",
+      "progress_id": "f83996bd-1eef-42fd-9a22-3fc985560ee6",
+      "attempt_no": 1,
+      "moves_san": [
+        "Nc3#"
+      ],
+      "is_correct": true,
+      "points_earned": 12,
+      "completed_at": "2026-10-13T07:23:17.899568+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "54eb4d88-9c67-431a-b304-213e347d9647",
+      "progress_id": "f83996bd-1eef-42fd-9a22-3fc985560ee6",
+      "attempt_no": 2,
+      "moves_san": [
+        "Nxc7"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T07:25:12.010516+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "d344bd01-7248-4fb8-bb56-2ed10d881d06",
+      "progress_id": "f83996bd-1eef-42fd-9a22-3fc985560ee6",
+      "attempt_no": 3,
+      "moves_san": [
+        "Nc3#"
+      ],
+      "is_correct": true,
+      "points_earned": 11,
+      "completed_at": "2026-10-13T07:59:56.164550+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "7b462475-fff4-4978-845c-7c3925b3e733",
+      "progress_id": "f83996bd-1eef-42fd-9a22-3fc985560ee6",
+      "attempt_no": 4,
+      "moves_san": [
+        "Ng5+"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T08:03:28.650475+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "7577d4d6-6daf-4af6-9b83-b092860e4ea1",
+      "progress_id": "f83996bd-1eef-42fd-9a22-3fc985560ee6",
+      "attempt_no": 5,
+      "moves_san": [
+        "Nc3#"
+      ],
+      "is_correct": true,
+      "points_earned": 11,
+      "completed_at": "2026-10-13T10:04:38.030778+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "d2facc68-c80d-4e74-867c-5a2ce7a47ccf",
+      "progress_id": "93302440-3375-4ca4-990f-7bfe9f0e2394",
+      "attempt_no": 1,
+      "moves_san": [
+        "Bh6#"
+      ],
+      "is_correct": true,
+      "points_earned": 12,
+      "completed_at": "2026-10-13T07:22:08.918714+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "4d13cd7a-bdad-40c8-bbd3-386d4c1d65d4",
+      "progress_id": "93302440-3375-4ca4-990f-7bfe9f0e2394",
+      "attempt_no": 2,
+      "moves_san": [
+        "Nxd7+"
+      ],
+      "is_correct": false,
+      "points_earned": 0,
+      "completed_at": "2026-10-13T07:25:02.776963+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "b172f2ae-f805-4f5a-9df5-3327d7d1471e",
+      "progress_id": "93302440-3375-4ca4-990f-7bfe9f0e2394",
+      "attempt_no": 3,
+      "moves_san": [
+        "Bh6#"
+      ],
+      "is_correct": true,
+      "points_earned": 11,
+      "completed_at": "2026-10-13T08:00:03.951230+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "d83dd179-762d-4717-a5f1-79e05a136ce8",
+      "progress_id": "93302440-3375-4ca4-990f-7bfe9f0e2394",
+      "attempt_no": 4,
+      "moves_san": [
+        "Bh6#"
+      ],
+      "is_correct": true,
+      "points_earned": 11,
+      "completed_at": "2026-10-13T08:03:33.659104+00:00",
+      "submission_id": null
+    },
+    {
+      "id": "16a43ce7-c684-4af0-a767-9da8d7e66c1c",
+      "progress_id": "93302440-3375-4ca4-990f-7bfe9f0e2394",
+      "attempt_no": 5,
+      "moves_san": [
+        "Bh6#"
+      ],
+      "is_correct": true,
+      "points_earned": 11,
+      "completed_at": "2026-10-13T10:04:42.778428+00:00",
+      "submission_id": null
+    }
+  ]
+}

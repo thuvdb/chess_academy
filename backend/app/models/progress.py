@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -31,6 +32,14 @@ class StudentProgress(UUIDMixin, TimestampMixin, Base):
     __table_args__ = (
         enum_check_constraint("status", ProgressStatus),
         enum_check_constraint("grading_method", GradingMethod),
+        Index(
+            "uq_student_puzzle_assignment",
+            "student_id",
+            "puzzle_id",
+            "assignment_id",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+        ),
     )
 
     student_id: Mapped[uuid.UUID] = mapped_column(
@@ -81,6 +90,9 @@ class StudentAttempt(UUIDMixin, Base):
 
     progress_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("student_progress.id"), nullable=False,
+    )
+    submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("assignment_submissions.id", ondelete="CASCADE"), nullable=True,
     )
     attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
     moves_uci: Mapped[list[str] | None] = mapped_column(ARRAY(String))
