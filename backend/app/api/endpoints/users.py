@@ -335,8 +335,29 @@ async def update_user(
             )
 
     update_dict = user_in.model_dump(exclude_unset=True)
-    if "password" in update_dict and update_dict["password"]:
-        target_user.password_hash = hash_password(update_dict.pop("password"))
+    if "password" in update_dict:
+        pwd = update_dict.pop("password")
+        if pwd:
+            target_user.password_hash = hash_password(pwd)
+
+    if "email" in update_dict:
+        email_val = update_dict.pop("email")
+        if email_val:
+            new_email = str(email_val).strip().lower()
+            if new_email != target_user.email:
+                existing = await db.execute(
+                    select(User).where(User.email == new_email, User.id != target_user.id)
+                )
+                if existing.scalars().first():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Email này đã được sử dụng bởi một tài khoản khác.",
+                    )
+                target_user.email = new_email
+
+    if "center_id" in update_dict:
+        if is_center_admin(current_user):
+            update_dict.pop("center_id")  # Center admin cannot move user to another center
 
     for field, value in update_dict.items():
         setattr(target_user, field, value)

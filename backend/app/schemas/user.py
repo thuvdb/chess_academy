@@ -26,12 +26,14 @@ class UserAdminCreate(BaseModel):
 
 class UserAdminUpdate(BaseModel):
     """Schema for updating an existing user by super_admin or center_admin."""
+    email: EmailStr | None = None
     full_name: str | None = None
     phone: str | None = None
     date_of_birth: date | None = None
     is_active: bool | None = None
     password: str | None = Field(default=None, min_length=6, max_length=128)
     role: str | None = Field(default=None, pattern="^(super_admin|center_admin|admin|teacher|student|parent)$")
+    center_id: uuid.UUID | None = None
 
 class UserRead(UserBase):
     id: uuid.UUID

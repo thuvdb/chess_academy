@@ -14,6 +14,9 @@ import {
   Phone,
   UserCheck,
   Loader2,
+  Edit2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
@@ -23,9 +26,11 @@ interface Member {
   full_name: string;
   username: string | null;
   role: string;
+  phone?: string | null;
   center_id: string | null;
   center_name?: string | null;
   avatar_url: string | null;
+  is_active?: boolean;
 }
 
 interface CenterOption {
@@ -58,6 +63,18 @@ const Members = () => {
   const [formPhone, setFormPhone] = useState('');
   const [formRole, setFormRole] = useState(isSuperAdmin ? 'center_admin' : 'student');
   const [formCenterId, setFormCenterId] = useState(user?.center_id || '');
+
+  // Edit Member Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editCenterId, setEditCenterId] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
   const fetchMembers = async (searchQuery = '') => {
     try {
@@ -95,17 +112,19 @@ const Members = () => {
     fetchMembers(search);
   };
 
+  // Open Create Modal
   const handleOpenModal = () => {
     setFormFullName('');
     setFormEmail('');
     setFormPassword('');
     setFormPhone('');
-    setFormRole(isSuperAdmin ? 'center_admin' : 'student');
+    setFormRole(isSuperAdmin ? 'center_admin' : 'teacher');
     setFormCenterId(user?.center_id || (centers[0]?.id || ''));
     setIsModalOpen(true);
     fetchCenters();
   };
 
+  // Submit Create Member
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formFullName.trim() || !formEmail.trim() || !formPassword.trim()) {
@@ -117,7 +136,6 @@ const Members = () => {
       return;
     }
 
-    // Determine target center
     const targetCenterId = isSuperAdmin ? formCenterId : user?.center_id;
     if (formRole !== 'super_admin' && !targetCenterId) {
       toast.error('Vui lòng chọn cơ sở/trung tâm cho thành viên này');
@@ -153,6 +171,75 @@ const Members = () => {
     }
   };
 
+  // Open Edit Modal
+  const handleOpenEditModal = (member: Member) => {
+    setEditingMember(member);
+    setEditFullName(member.full_name || '');
+    setEditEmail(member.email || '');
+    setEditPhone(member.phone || '');
+    setEditRole(member.role);
+    setEditCenterId(member.center_id || '');
+    setEditPassword('');
+    setEditIsActive(member.is_active ?? true);
+    setIsEditModalOpen(true);
+    fetchCenters();
+  };
+
+  // Submit Edit Member
+  const handleUpdateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    if (!editFullName.trim() || !editEmail.trim()) {
+      toast.error('Vui lòng điền đầy đủ họ tên và email');
+      return;
+    }
+    if (editPassword && editPassword.length < 6) {
+      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const payload: Record<string, any> = {
+        full_name: editFullName.trim(),
+        email: editEmail.trim().toLowerCase(),
+        role: editRole,
+        phone: editPhone.trim() || undefined,
+        is_active: editIsActive,
+      };
+
+      if (editPassword) {
+        payload.password = editPassword;
+      }
+
+      if (isSuperAdmin && editRole !== 'super_admin') {
+        payload.center_id = editCenterId || undefined;
+      }
+
+      await api.patch(`/users/${editingMember.id}`, payload);
+      toast.success('Cập nhật thông tin thành viên thành công!');
+      setIsEditModalOpen(false);
+      await fetchMembers(search);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Lỗi khi cập nhật thành viên');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Determine if caller can edit a given member
+  const canEditMember = (target: Member) => {
+    if (isSuperAdmin) return true;
+    if (isCenterAdmin) {
+      const isTargetAdmin =
+        target.role === 'super_admin' ||
+        target.role === 'center_admin' ||
+        target.role === 'admin';
+      return !isTargetAdmin && target.center_id === user?.center_id;
+    }
+    return false;
+  };
+
   if (!canManage) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -179,8 +266,8 @@ const Members = () => {
           </div>
           <p className="text-slate-400 text-sm mt-1">
             {isSuperAdmin
-              ? 'Super Admin có toàn quyền tạo Admin trung tâm, Giáo viên, Học sinh và xem nhân sự toàn hệ thống.'
-              : `Admin trung tâm quản lý và tạo tài khoản Giáo viên, Học sinh, Phụ huynh cho ${user?.center_name || 'cơ sở của mình'}.`}
+              ? 'Super Admin có toàn quyền tạo, sửa, gán cơ sở cho Admin trung tâm, Giáo viên và Học sinh.'
+              : `Admin trung tâm quản lý, thêm mới và chỉnh sửa thông tin Giáo viên, Học sinh cho ${user?.center_name || 'cơ sở'}.`}
           </p>
         </div>
 
@@ -218,12 +305,13 @@ const Members = () => {
                 <th className="px-5 py-3 font-semibold">Email & Liên hệ</th>
                 <th className="px-5 py-3 font-semibold">Vai trò</th>
                 <th className="px-5 py-3 font-semibold">Cơ sở trực thuộc</th>
+                <th className="px-5 py-3 font-semibold text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                       <span>Đang tải danh sách thành viên...</span>
@@ -232,7 +320,7 @@ const Members = () => {
                 </tr>
               ) : members.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
                     Chưa có thành viên nào phù hợp với tìm kiếm.
                   </td>
                 </tr>
@@ -253,7 +341,14 @@ const Members = () => {
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-white text-sm">{member.full_name}</div>
+                          <div className="font-semibold text-white text-sm flex items-center gap-2">
+                            <span>{member.full_name}</span>
+                            {member.is_active === false && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                Đã khóa
+                              </span>
+                            )}
+                          </div>
                           {member.username && (
                             <div className="text-[11px] text-slate-400">@{member.username}</div>
                           )}
@@ -262,6 +357,7 @@ const Members = () => {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="text-slate-300 font-medium">{member.email}</div>
+                      {member.phone && <div className="text-[11px] text-slate-500">{member.phone}</div>}
                     </td>
                     <td className="px-5 py-3.5">
                       <span
@@ -304,6 +400,17 @@ const Members = () => {
                         </span>
                       )}
                     </td>
+                    <td className="px-5 py-3.5 text-right">
+                      {canEditMember(member) && (
+                        <button
+                          onClick={() => handleOpenEditModal(member)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-semibold border border-slate-700 hover:border-amber-500/40 transition-all shadow-sm"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Sửa
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -312,11 +419,10 @@ const Members = () => {
         </div>
       </div>
 
-      {/* Modal Tạo thành viên */}
+      {/* Modal 1: Tạo thành viên */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
@@ -341,9 +447,7 @@ const Members = () => {
               </button>
             </div>
 
-            {/* Modal Form */}
             <form onSubmit={handleCreateMember} className="p-6 space-y-4 overflow-y-auto">
-              {/* Vai trò */}
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Vai trò (Role) <span className="text-rose-400">*</span>
@@ -376,7 +480,6 @@ const Members = () => {
                 )}
               </div>
 
-              {/* Cơ sở trực thuộc */}
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
                   <Building className="w-3.5 h-3.5 text-amber-400" />
@@ -403,7 +506,6 @@ const Members = () => {
                 )}
               </div>
 
-              {/* Họ và tên */}
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Họ và tên đầy đủ <span className="text-rose-400">*</span>
@@ -421,7 +523,6 @@ const Members = () => {
                 </div>
               </div>
 
-              {/* Email */}
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Email đăng nhập <span className="text-rose-400">*</span>
@@ -439,7 +540,6 @@ const Members = () => {
                 </div>
               </div>
 
-              {/* Mật khẩu */}
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Mật khẩu khởi tạo <span className="text-rose-400">*</span>
@@ -458,7 +558,6 @@ const Members = () => {
                 </div>
               </div>
 
-              {/* Số điện thoại */}
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Số điện thoại
@@ -475,7 +574,6 @@ const Members = () => {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
@@ -491,6 +589,207 @@ const Members = () => {
                 >
                   {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {creating ? 'Đang tạo...' : 'Tạo tài khoản'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Chỉnh sửa thành viên (Edit Member Modal) */}
+      {isEditModalOpen && editingMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                  <Edit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Chỉnh sửa thông tin thành viên</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Cập nhật họ tên, email đăng nhập, số điện thoại hoặc đặt lại mật khẩu.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateMember} className="p-6 space-y-4 overflow-y-auto">
+              {/* Họ và tên */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Họ và tên đầy đủ <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                    required
+                  />
+                  <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Email đăng nhập */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Email đăng nhập <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                    required
+                  />
+                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+                <p className="text-[11px] text-amber-400/90 mt-1">
+                  * Chỉnh sửa email chính xác để giáo viên/học sinh có thể đăng nhập.
+                </p>
+              </div>
+
+              {/* Số điện thoại */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Số điện thoại
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="vd: 0988888888"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                  />
+                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Vai trò */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Vai trò (Role)
+                </label>
+                {isSuperAdmin ? (
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="center_admin">Admin trung tâm</option>
+                    <option value="teacher">Giáo viên</option>
+                    <option value="student">Học sinh</option>
+                    <option value="parent">Phụ huynh</option>
+                  </select>
+                ) : (
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="teacher">Giáo viên</option>
+                    <option value="student">Học sinh</option>
+                    <option value="parent">Phụ huynh</option>
+                  </select>
+                )}
+              </div>
+
+              {/* Cơ sở (chỉ Super Admin mới đổi được cơ sở) */}
+              {isSuperAdmin && editRole !== 'super_admin' && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-amber-400" />
+                    Cơ sở trực thuộc
+                  </label>
+                  <select
+                    value={editCenterId}
+                    onChange={(e) => setEditCenterId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="">-- Chưa gán cơ sở --</option>
+                    {centers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.address ? `(${c.address})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Mật khẩu mới (tùy chọn) */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Đặt lại mật khẩu mới (Tùy chọn)
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Bỏ trống nếu không muốn đổi mật khẩu"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                    minLength={6}
+                  />
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Trạng thái hoạt động */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Trạng thái tài khoản
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                    <input
+                      type="radio"
+                      checked={editIsActive === true}
+                      onChange={() => setEditIsActive(true)}
+                      className="accent-emerald-500"
+                    />
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <span>Đang hoạt động</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                    <input
+                      type="radio"
+                      checked={editIsActive === false}
+                      onChange={() => setEditIsActive(false)}
+                      className="accent-rose-500"
+                    />
+                    <XCircle className="w-4 h-4 text-rose-400" />
+                    <span>Khóa tài khoản</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                >
+                  {updating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {updating ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>
