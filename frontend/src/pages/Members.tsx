@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../lib/api';
-import { Search, Users, Shield, User } from 'lucide-react';
+import {
+  Search,
+  Users,
+  Shield,
+  User,
+  Plus,
+  X,
+  Building,
+  Mail,
+  Lock,
+  Phone,
+  UserCheck,
+  Loader2,
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 interface Member {
@@ -11,127 +24,286 @@ interface Member {
   username: string | null;
   role: string;
   center_id: string | null;
+  center_name?: string | null;
   avatar_url: string | null;
+}
+
+interface CenterOption {
+  id: string;
+  name: string;
+  address?: string | null;
+  phone?: string | null;
 }
 
 const Members = () => {
   const { user } = useAuthStore();
+  const role = user?.role;
+  const isSuperAdmin = role === 'super_admin';
+  const isCenterAdmin = role === 'center_admin' || role === 'admin';
+  const canManage = isSuperAdmin || isCenterAdmin;
+
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  // Centers list for selection (super_admin)
+  const [centers, setCenters] = useState<CenterOption[]>([]);
+
+  // Add Member Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formFullName, setFormFullName] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formPassword, setFormPassword] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formRole, setFormRole] = useState(isSuperAdmin ? 'center_admin' : 'student');
+  const [formCenterId, setFormCenterId] = useState(user?.center_id || '');
+
   const fetchMembers = async (searchQuery = '') => {
     try {
       setLoading(true);
-      const { data } = await api.get(`/users/members?search=${searchQuery}&limit=100`);
+      const { data } = await api.get(`/users/members?search=${encodeURIComponent(searchQuery)}&limit=100`);
       setMembers(data);
     } catch (error) {
-      toast.error('Failed to load members');
+      toast.error('Không thể tải danh sách thành viên');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchCenters = async () => {
+    try {
+      const { data } = await api.get('/users/centers');
+      setCenters(data);
+      if (data.length > 0 && !formCenterId) {
+        setFormCenterId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load centers', error);
+    }
+  };
+
   useEffect(() => {
-    fetchMembers();
-  }, []);
+    if (canManage) {
+      fetchMembers();
+      fetchCenters();
+    }
+  }, [user]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchMembers(search);
   };
 
-  if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+  const handleOpenModal = () => {
+    setFormFullName('');
+    setFormEmail('');
+    setFormPassword('');
+    setFormPhone('');
+    setFormRole(isSuperAdmin ? 'center_admin' : 'student');
+    setFormCenterId(user?.center_id || (centers[0]?.id || ''));
+    setIsModalOpen(true);
+    fetchCenters();
+  };
+
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formFullName.trim() || !formEmail.trim() || !formPassword.trim()) {
+      toast.error('Vui lòng điền đầy đủ các thông tin bắt buộc');
+      return;
+    }
+    if (formPassword.length < 6) {
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    // Determine target center
+    const targetCenterId = isSuperAdmin ? formCenterId : user?.center_id;
+    if (formRole !== 'super_admin' && !targetCenterId) {
+      toast.error('Vui lòng chọn cơ sở/trung tâm cho thành viên này');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const payload: Record<string, any> = {
+        full_name: formFullName.trim(),
+        email: formEmail.trim().toLowerCase(),
+        password: formPassword,
+        role: formRole,
+        phone: formPhone.trim() || undefined,
+      };
+
+      if (formRole !== 'super_admin') {
+        payload.center_id = targetCenterId;
+      }
+
+      await api.post('/users', payload);
+      toast.success(
+        formRole === 'center_admin'
+          ? 'Đã tạo tài khoản Admin trung tâm thành công!'
+          : 'Đã thêm thành viên mới thành công!'
+      );
+      setIsModalOpen(false);
+      await fetchMembers(search);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Lỗi khi tạo thành viên');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  if (!canManage) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">You do not have permission to view this page.</p>
+        <p className="text-slate-400">Bạn không có quyền truy cập trang này.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-500" />
-            Members Directory
-          </h1>
-          <p className="text-slate-400 mt-1">
-            {user.role === 'super_admin' 
-              ? 'View all registered members across all centers.'
-              : 'View all members registered to your center.'}
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Users className="w-6 h-6 text-amber-500" />
+              Quản lý thành viên & Nhân sự
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              {isSuperAdmin
+                ? 'Toàn hệ thống'
+                : user?.center_name || 'Cơ sở trực thuộc'}
+            </span>
+          </div>
+          <p className="text-slate-400 text-sm mt-1">
+            {isSuperAdmin
+              ? 'Super Admin có toàn quyền tạo Admin trung tâm, Giáo viên, Học sinh và xem nhân sự toàn hệ thống.'
+              : `Admin trung tâm quản lý và tạo tài khoản Giáo viên, Học sinh, Phụ huynh cho ${user?.center_name || 'cơ sở của mình'}.`}
           </p>
         </div>
 
-        <form onSubmit={handleSearch} className="relative w-full sm:w-72">
-          <input 
-            type="text"
-            placeholder="Search name, username, email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-blue-500"
-          />
-          <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
-        </form>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          {/* Search bar */}
+          <form onSubmit={handleSearch} className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Tìm theo tên, email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          </form>
+
+          {/* Add member button */}
+          <button
+            onClick={handleOpenModal}
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-amber-500/20 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            {isSuperAdmin ? 'Tạo tài khoản / Admin' : 'Thêm thành viên'}
+          </button>
+        </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      {/* Members Table */}
+      <div className="bg-slate-900/60 rounded-xl border border-slate-800 overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase border-b border-slate-700">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="bg-slate-950/80 text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-800">
               <tr>
-                <th className="px-6 py-4 font-medium">Member</th>
-                <th className="px-6 py-4 font-medium">Contact</th>
-                <th className="px-6 py-4 font-medium">Role</th>
-                {user.role === 'super_admin' && <th className="px-6 py-4 font-medium">Center ID</th>}
+                <th className="px-5 py-3 font-semibold">Thành viên</th>
+                <th className="px-5 py-3 font-semibold">Email & Liên hệ</th>
+                <th className="px-5 py-3 font-semibold">Vai trò</th>
+                <th className="px-5 py-3 font-semibold">Cơ sở trực thuộc</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50">
+            <tbody className="divide-y divide-slate-800/60">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-400">Loading members...</td>
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                      <span>Đang tải danh sách thành viên...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-400">No members found.</td>
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                    Chưa có thành viên nào phù hợp với tìm kiếm.
+                  </td>
                 </tr>
               ) : (
                 members.map((member) => (
-                  <tr key={member.id} className="hover:bg-slate-700/30 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={member.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         {member.avatar_url ? (
-                          <img src={member.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
+                          <img
+                            src={member.avatar_url}
+                            alt="Avatar"
+                            className="w-9 h-9 rounded-full object-cover border border-slate-700"
+                          />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-                            <User className="w-5 h-5 text-slate-400" />
+                          <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold">
+                            {member.full_name?.charAt(0)?.toUpperCase() || <User className="w-4 h-4 text-slate-400" />}
                           </div>
                         )}
                         <div>
-                          <div className="font-medium text-white">{member.full_name}</div>
-                          {member.username && <div className="text-xs text-slate-400">@{member.username}</div>}
+                          <div className="font-semibold text-white text-sm">{member.full_name}</div>
+                          {member.username && (
+                            <div className="text-[11px] text-slate-400">@{member.username}</div>
+                          )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-slate-300">{member.email}</div>
+                    <td className="px-5 py-3.5">
+                      <div className="text-slate-300 font-medium">{member.email}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
-                        ${member.role === 'super_admin' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 
-                          member.role === 'admin' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 
-                          member.role === 'teacher' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                          'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
-                        {member.role === 'super_admin' || member.role === 'admin' ? <Shield className="w-3 h-3" /> : null}
-                        {member.role}
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                          member.role === 'super_admin'
+                            ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
+                            : member.role === 'center_admin' || member.role === 'admin'
+                            ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            : member.role === 'teacher'
+                            ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                            : member.role === 'parent'
+                            ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30'
+                            : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        }`}
+                      >
+                        {member.role === 'super_admin' || member.role === 'center_admin' || member.role === 'admin' ? (
+                          <Shield className="w-3 h-3" />
+                        ) : (
+                          <UserCheck className="w-3 h-3" />
+                        )}
+                        {member.role === 'super_admin'
+                          ? 'Super Admin'
+                          : member.role === 'center_admin' || member.role === 'admin'
+                          ? 'Admin trung tâm'
+                          : member.role === 'teacher'
+                          ? 'Giáo viên'
+                          : member.role === 'parent'
+                          ? 'Phụ huynh'
+                          : 'Học sinh'}
                       </span>
                     </td>
-                    {user.role === 'super_admin' && (
-                      <td className="px-6 py-4">
-                        <span className="text-xs text-slate-500 font-mono">{member.center_id?.split('-')[0] || 'N/A'}...</span>
-                      </td>
-                    )}
+                    <td className="px-5 py-3.5">
+                      {member.role === 'super_admin' ? (
+                        <span className="text-slate-400 italic">Toàn hệ thống</span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                          {member.center_name ||
+                            centers.find((c) => c.id === member.center_id)?.name ||
+                            (member.center_id ? `Cơ sở ${member.center_id.slice(0, 8)}...` : 'Chưa gán')}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -139,6 +311,192 @@ const Members = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal Tạo thành viên */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    {isSuperAdmin ? 'Tạo tài khoản người dùng' : 'Thêm thành viên mới'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {isSuperAdmin
+                      ? 'Super Admin có thể tạo Admin trung tâm, Giáo viên, Học sinh'
+                      : `Tạo tài khoản giáo viên, học sinh cho ${user?.center_name || 'cơ sở'}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleCreateMember} className="p-6 space-y-4 overflow-y-auto">
+              {/* Vai trò */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Vai trò (Role) <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={formRole}
+                  onChange={(e) => setFormRole(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                  required
+                >
+                  {isSuperAdmin ? (
+                    <>
+                      <option value="center_admin">Admin trung tâm (Center Admin)</option>
+                      <option value="teacher">Giáo viên (Teacher)</option>
+                      <option value="student">Học sinh (Student)</option>
+                      <option value="parent">Phụ huynh (Parent)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="teacher">Giáo viên (Teacher)</option>
+                      <option value="student">Học sinh (Student)</option>
+                      <option value="parent">Phụ huynh (Parent)</option>
+                    </>
+                  )}
+                </select>
+                {!isSuperAdmin && (
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    * Admin trung tâm có quyền tạo Giáo viên, Học sinh và Phụ huynh cho cơ sở của mình.
+                  </p>
+                )}
+              </div>
+
+              {/* Cơ sở trực thuộc */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
+                  <Building className="w-3.5 h-3.5 text-amber-400" />
+                  Cơ sở / Trung tâm <span className="text-rose-400">*</span>
+                </label>
+                {isSuperAdmin ? (
+                  <select
+                    value={formCenterId}
+                    onChange={(e) => setFormCenterId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                    required
+                  >
+                    {centers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.address ? `(${c.address})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-amber-400 font-semibold text-xs flex items-center justify-between">
+                    <span>{user?.center_name || 'Cơ sở của bạn'}</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Cố định theo tài khoản của bạn</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Họ và tên */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Họ và tên đầy đủ <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formFullName}
+                    onChange={(e) => setFormFullName(e.target.value)}
+                    placeholder="vd: Nguyễn Văn A"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                    required
+                  />
+                  <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Email đăng nhập <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                    required
+                  />
+                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Mật khẩu */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Mật khẩu khởi tạo <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    placeholder="Tối thiểu 6 ký tự"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                    required
+                    minLength={6}
+                  />
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Số điện thoại */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Số điện thoại
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="vd: 0988888888"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                  />
+                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                >
+                  {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {creating ? 'Đang tạo...' : 'Tạo tài khoản'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

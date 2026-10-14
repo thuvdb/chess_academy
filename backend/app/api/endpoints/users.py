@@ -22,6 +22,7 @@ from app.core.permissions import (
 )
 from app.core.security import hash_password
 from app.models.user import User, parent_student
+from app.models.center import Center
 from app.schemas.user import (
     ParentStudentLinkResponse,
     UserAdminCreate,
@@ -243,6 +244,31 @@ async def get_my_children(
     )
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.get("/centers")
+async def get_centers_for_user(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List centers available to current user."""
+    if is_super_admin(current_user):
+        stmt = select(Center).order_by(Center.name)
+    elif current_user.center_id:
+        stmt = select(Center).where(Center.id == current_user.center_id)
+    else:
+        return []
+    result = await db.execute(stmt)
+    centers = result.scalars().all()
+    return [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "address": c.address,
+            "phone": c.phone,
+        }
+        for c in centers
+    ]
 
 
 @router.get("/{user_id}", response_model=UserDetailRead)
