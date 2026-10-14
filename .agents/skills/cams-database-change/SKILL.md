@@ -12,9 +12,9 @@ Quy trình step-by-step khi thay đổi PostgreSQL schema, tạo migration, ho�
 
 ## Source of Truth
 
-- `docs/02_system_design.md` §2.2 → Schema chính thức
-- `docs/PAYMENT_ARCHITECTURE.md` → Payment tables
-- `docs/AI_SCANNER_ARCHITECTURE.md` → AI Scanner tables
+- `docs/02-architecture/02_system_design.md` §2.2 → Schema chính thức
+- `docs/02-architecture/PAYMENT_ARCHITECTURE.md` → Payment tables
+- `docs/02-architecture/AI_SCANNER_ARCHITECTURE.md` → AI Scanner tables
 - `backend/app/models/` → SQLAlchemy models hiện tại
 
 ## Quy trình

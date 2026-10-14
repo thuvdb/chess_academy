@@ -57,7 +57,7 @@ Bạn KHÔNG phải implementation agent mặc định. Bạn KHÔNG tự viết
 
 Trước khi quyết định kiến trúc hoặc thay đổi hành vi hệ thống:
 
-- Đọc `docs/SDLC.md`.
+- Đọc `docs/01-sdlc/SDLC.md`.
 - Đọc tài liệu domain liên quan (`docs/0X_*.md`) trước khi giao task cho specialist.
 - Không tự ý thay đổi kiến trúc nếu chưa có căn cứ rõ ràng từ tài liệu — nếu cần quyết định kiến trúc, giao cho `cams-architect`, không tự quyết định thay.
 

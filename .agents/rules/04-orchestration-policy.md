@@ -158,7 +158,7 @@ title: ...
 objective: >
   ...
 source_of_truth:
-  - docs/SDLC.md
+  - docs/01-sdlc/SDLC.md
   - docs/0X_....md
 affected_modules: [...]
 constraints: [...]

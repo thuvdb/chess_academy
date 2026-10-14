@@ -1,0 +1,26 @@
+{
+  "task_id": "CAMS-0017",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "Teacher homework grading workflow, student homework confidentiality and progress column fix",
+  "specialists_invoked": ["cams-backend", "cams-database", "cams-frontend", "cams-qa"],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Used existing student_attempts and student_progress tables instead of introducing redundant submission_items/events tables to avoid over-engineering"
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-13T16:51:30+07:00"
+}

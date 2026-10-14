@@ -12,9 +12,9 @@ Quy trình step-by-step khi implement hoặc validate chess domain logic trong C
 
 ## Source of Truth
 
-- `docs/AI_SCANNER_ARCHITECTURE.md` → FEN Validation Pipeline
-- `docs/02_system_design.md` → Puzzle/Exercise tables
-- `docs/01_requirements.md` → Exercise & Training user stories
+- `docs/02-architecture/AI_SCANNER_ARCHITECTURE.md` → FEN Validation Pipeline
+- `docs/02-architecture/02_system_design.md` → Puzzle/Exercise tables
+- `docs/01-sdlc/01_requirements.md` → Exercise & Training user stories
 
 ## Ranh giới AI-CV ↔ Chess
 

@@ -12,9 +12,9 @@ Quy trình step-by-step khi implement hoặc sửa đổi AI Scanner pipeline tr
 
 ## Source of Truth
 
-- `docs/AI_SCANNER_ARCHITECTURE.md` → **Bắt buộc đọc trước khi bắt đầu**
-- `docs/02_system_design.md` → AI-related tables
-- `docs/03_sprint_plan.md` → Sprint 3A–3D (AI development sprints)
+- `docs/02-architecture/AI_SCANNER_ARCHITECTURE.md` → **Bắt buộc đọc trước khi bắt đầu**
+- `docs/02-architecture/02_system_design.md` → AI-related tables
+- `docs/01-sdlc/03_sprint_plan.md` → Sprint 3A–3D (AI development sprints)
 
 ## Pipeline Architecture
 

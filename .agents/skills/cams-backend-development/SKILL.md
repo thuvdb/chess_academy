@@ -12,10 +12,10 @@ Quy trình step-by-step khi implement hoặc sửa đổi backend API/service tr
 
 ## Source of Truth
 
-- `docs/SDLC.md` → tech stack, roadmap
-- `docs/02_system_design.md` → DB schema, API design
-- `docs/PAYMENT_ARCHITECTURE.md` → khi task liên quan payment
-- `docs/AI_SCANNER_ARCHITECTURE.md` → khi task liên quan AI pipeline
+- `docs/01-sdlc/SDLC.md` → tech stack, roadmap
+- `docs/02-architecture/02_system_design.md` → DB schema, API design
+- `docs/02-architecture/PAYMENT_ARCHITECTURE.md` → khi task liên quan payment
+- `docs/02-architecture/AI_SCANNER_ARCHITECTURE.md` → khi task liên quan AI pipeline
 
 ## Stack
 

@@ -15,14 +15,14 @@
 | File                                                       | Nội dung                                                                |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
 | [01_requirements.md](./01_requirements.md)                 | Giai đoạn 1 — Phân tích Yêu cầu (Stakeholders, FR, NFR, User Stories)   |
-| [02_system_design.md](./02_system_design.md)               | Giai đoạn 2 — Thiết kế Hệ thống (Kiến trúc, DB Schema, API, Screen Map) |
+| [02_system_design.md](../02-architecture/02_system_design.md)               | Giai đoạn 2 — Thiết kế Hệ thống (Kiến trúc, DB Schema, API, Screen Map) |
 | [03_sprint_plan.md](./03_sprint_plan.md)                   | Giai đoạn 3 — Sprint Plan (Sprint 0–8 + 3A/3B/3C/3D, ~20 tuần)          |
 | [04_testing.md](./04_testing.md)                           | Giai đoạn 4 — Chiến lược Kiểm thử (Unit, Integration, AI, E2E, Load)    |
-| [05_deployment.md](./05_deployment.md)                     | Giai đoạn 5 — Triển khai & DevOps (Docker, CI/CD, Production Checklist) |
-| [06_maintenance.md](./06_maintenance.md)                   | Giai đoạn 6 — Bảo trì & Lộ trình (MLOps, Roadmap v1→v3.5)               |
-| [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md)       | Kiến trúc Payment Service (3 cấp Level 1/2/3, State Machine, Webhook)   |
-| [AI_SCANNER_ARCHITECTURE.md](./AI_SCANNER_ARCHITECTURE.md) | Kiến trúc AI Scanner (3 Service + FEN Validation + MLOps)               |
-| [TOURNAMENT_ARCHITECTURE.md](./TOURNAMENT_ARCHITECTURE.md) | Kiến trúc Giải đấu (Swiss/Round Robin, WebSocket, Redis Game State)     |
+| [05_deployment.md](../03-operations/05_deployment.md)                     | Giai đoạn 5 — Triển khai & DevOps (Docker, CI/CD, Production Checklist) |
+| [06_maintenance.md](../03-operations/06_maintenance.md)                   | Giai đoạn 6 — Bảo trì & Lộ trình (MLOps, Roadmap v1→v3.5)               |
+| [PAYMENT_ARCHITECTURE.md](../02-architecture/PAYMENT_ARCHITECTURE.md)       | Kiến trúc Payment Service (3 cấp Level 1/2/3, State Machine, Webhook)   |
+| [AI_SCANNER_ARCHITECTURE.md](../02-architecture/AI_SCANNER_ARCHITECTURE.md) | Kiến trúc AI Scanner (3 Service + FEN Validation + MLOps)               |
+| [TOURNAMENT_ARCHITECTURE.md](../02-architecture/TOURNAMENT_ARCHITECTURE.md) | Kiến trúc Giải đấu (Swiss/Round Robin, WebSocket, Redis Game State)     |
 
 ---
 

@@ -1,0 +1,35 @@
+{
+  "task_id": "CAMS-0025",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "Dynamic Settings & Catalogs (Catalog Items, Tabbed Settings UI, Center Branding)",
+  "specialists_invoked": [
+    "cams-database",
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Catalog items code is immutable once created; only label, order_index, and is_active can be modified.",
+    "Settings resolution hierarchy: center-specific setting -> system-wide setting -> default fallback.",
+    "Center admins can override system settings marked as is_overridable=true for their center.",
+    "Super admin has global access; center_admin manages settings/catalogs for their own center.",
+    "The /settings page adapts its visible tabs dynamically based on caller role."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-14T22:21:00+07:00"
+}

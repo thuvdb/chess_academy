@@ -1,0 +1,23 @@
+{
+  "task_id": "CAMS-0015",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-frontend",
+    "cams-database",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Khắc phục lỗi hiển thị 8/7 và dọn dẹp điểm số của Triết (151 pts -> 77 pts)",
+    "Ngăn chặn race condition bằng cách sửa logic đếm distinct trên frontend, dedup trong API, và thêm unique constraint",
+    "Chuẩn bị nền tảng tách biệt quy trình Luyện tập và Bài tập về nhà"
+  ],
+  "updated_at": "2026-10-13T08:33:30Z"
+}

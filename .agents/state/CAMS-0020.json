@@ -1,0 +1,26 @@
+{
+  "task_id": "CAMS-0020",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix NameError: ProgressStatus is not defined in grade_and_return_assignment",
+  "specialists_invoked": ["cams-backend", "cams-qa"],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Imported ProgressStatus into assignment_service.py and verified all backend services/endpoints with symtable (zero undefined symbols left)."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-13T21:02:00+07:00"
+}

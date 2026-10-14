@@ -1,0 +1,34 @@
+{
+  "task_id": "CAMS-0023",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "RBAC Core: app/core/permissions.py, hierarchical user provisioning API, parent-student links, and center_admin role migration",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-database",
+    "cams-security",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Role 'center_admin' is introduced alongside 'admin' with full backward compatibility.",
+    "center_admin can only create and manage users within their own center.",
+    "Accessing resources belonging to other centers returns 404 Not Found to prevent tenant data leakage.",
+    "Parent-student links strictly require both users to belong to the same center."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-14T11:32:00+07:00"
+}

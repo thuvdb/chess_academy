@@ -1,7 +1,7 @@
 # Giai đoạn 5: Triển khai & DevOps (Deployment & DevOps)
 
 > **CAMS — Chess Academy Management System**
-> Tài liệu con của [SDLC.md](./SDLC.md)
+> Tài liệu con của [SDLC.md](../01-sdlc/SDLC.md)
 
 ---
 

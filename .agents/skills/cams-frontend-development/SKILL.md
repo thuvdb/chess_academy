@@ -12,9 +12,9 @@ Quy trình step-by-step khi implement hoặc sửa đổi frontend web trong CAM
 
 ## Source of Truth
 
-- `docs/02_system_design.md` §2.6 → Screen Map & UI Flow
-- `docs/02_system_design.md` §2.4 → API Specification (contract với backend)
-- `docs/01_requirements.md` → User Stories
+- `docs/02-architecture/02_system_design.md` §2.6 → Screen Map & UI Flow
+- `docs/02-architecture/02_system_design.md` §2.4 → API Specification (contract với backend)
+- `docs/01-sdlc/01_requirements.md` → User Stories
 
 ## Stack
 

@@ -40,4 +40,4 @@ manual
 - Uncommitted changes: no (only pycache)
 
 ## Next Action
-- Initiate INTAKE phase for Sprint 5 (Payment & Invoices). Consult `docs/03_sprint_plan.md` for requirements.
+- Initiate INTAKE phase for Sprint 5 (Payment & Invoices). Consult `docs/01-sdlc/03_sprint_plan.md` for requirements.

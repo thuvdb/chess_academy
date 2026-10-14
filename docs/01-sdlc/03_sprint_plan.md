@@ -216,7 +216,7 @@ Teacher → Tạo bài tập
 
 ## Sprint 5 — Thanh toán Học phí (Tuần 13–14)
 
-> Xem chi tiết: [PAYMENT_ARCHITECTURE.md](./PAYMENT_ARCHITECTURE.md)
+> Xem chi tiết: [PAYMENT_ARCHITECTURE.md](../02-architecture/PAYMENT_ARCHITECTURE.md)
 
 ### Level 1 — MVP (Sprint 5)
 - Models: `fee_plans`, `invoices`, `payments`

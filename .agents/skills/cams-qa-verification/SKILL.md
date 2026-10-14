@@ -22,8 +22,8 @@ Vai trò thật:
 
 ## Source of Truth
 
-- `docs/04_testing.md` → Test strategy tổng thể
-- `docs/01_requirements.md` → Acceptance criteria
+- `docs/01-sdlc/04_testing.md` → Test strategy tổng thể
+- `docs/01-sdlc/01_requirements.md` → Acceptance criteria
 - `05-result-contract.md` → Format báo cáo specialist
 
 ## Quy trình Verification

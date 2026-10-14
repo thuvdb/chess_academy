@@ -1,0 +1,32 @@
+{
+  "task_id": "CAMS-0022",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Security Hotfix: Patch public /register endpoint role/center tampering and restrict OAuth user auto-creation",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-security",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "ALLOW_PUBLIC_REGISTER defaults to false. When false, public register returns 403 Forbidden.",
+    "When ALLOW_PUBLIC_REGISTER is true, user role is forced to 'student' and center_id is forced to None, client cannot specify role or center_id.",
+    "Google and Facebook OAuth will only authenticate users whose emails already exist in the database; unknown emails return 403 (no auto-provisioning unassigned students)."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-14T11:13:00+07:00"
+}

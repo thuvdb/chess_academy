@@ -9,7 +9,7 @@ manual (User requested "resume CAMS-0004")
 ## Current State
 - **Phase**: INTEGRATE
 - **Status**: DONE
-- **Progress**: Hoàn tất Sprint 2 (Classes & Enrollment). Khi vào phiên này, ledger ghi `IN_PROGRESS` nhưng đã lỗi thời — phần lớn Sprint 2 đã được triển khai ở các phiên trước (commit `d4d6e1f`). Đối chiếu lại toàn bộ checklist `docs/03_sprint_plan.md:54-66` cho thấy chỉ còn thiếu duy nhất endpoint "API lấy lịch học theo lớp", nay đã bổ sung.
+- **Progress**: Hoàn tất Sprint 2 (Classes & Enrollment). Khi vào phiên này, ledger ghi `IN_PROGRESS` nhưng đã lỗi thời — phần lớn Sprint 2 đã được triển khai ở các phiên trước (commit `d4d6e1f`). Đối chiếu lại toàn bộ checklist `docs/01-sdlc/03_sprint_plan.md:54-66` cho thấy chỉ còn thiếu duy nhất endpoint "API lấy lịch học theo lớp", nay đã bổ sung.
 
 ## Gap Analysis (đầu phiên)
 | Yêu cầu Sprint 2 | Trạng thái | Bằng chứng |

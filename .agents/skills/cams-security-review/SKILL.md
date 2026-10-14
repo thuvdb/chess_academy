@@ -28,9 +28,9 @@ Theo `04-orchestration-policy.md` §7:
 
 ## Source of Truth
 
-- `docs/02_system_design.md` → Auth/RBAC design
-- `docs/PAYMENT_ARCHITECTURE.md` → Payment security
-- `docs/05_deployment.md` → Deployment security checklist
+- `docs/02-architecture/02_system_design.md` → Auth/RBAC design
+- `docs/02-architecture/PAYMENT_ARCHITECTURE.md` → Payment security
+- `docs/03-operations/05_deployment.md` → Deployment security checklist
 - OWASP Top 10 (external reference)
 
 ## Quy trình Review

@@ -12,9 +12,9 @@ Quy trình step-by-step khi implement hoặc sửa đổi payment feature trong 
 
 ## Source of Truth
 
-- `docs/PAYMENT_ARCHITECTURE.md` → **Bắt buộc đọc trước khi bắt đầu**
-- `docs/02_system_design.md` §2.2 → Payment tables trong DB schema
-- `docs/01_requirements.md` → Payment user stories
+- `docs/02-architecture/PAYMENT_ARCHITECTURE.md` → **Bắt buộc đọc trước khi bắt đầu**
+- `docs/02-architecture/02_system_design.md` §2.2 → Payment tables trong DB schema
+- `docs/01-sdlc/01_requirements.md` → Payment user stories
 
 ## 3 Level Payment CAMS
 

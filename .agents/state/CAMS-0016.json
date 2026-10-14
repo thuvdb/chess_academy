@@ -1,0 +1,28 @@
+{
+  "task_id": "CAMS-0016",
+  "type": "FEATURE",
+  "state": "DONE",
+  "specialists_invoked": [
+    "cams-architect",
+    "cams-backend",
+    "cams-database",
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Triển khai tính năng Khóa cứng nộp bài (Submit Lock) cho Assignment",
+    "Model AssignmentSubmission: not_started -> in_progress -> submitted",
+    "Server-side lock: chặn mọi API ghi điểm/nước đi khi status == submitted",
+    "Giáo viên có quyền Reopen kèm lý do và ghi nhận audit log",
+    "Celery task auto_submit_overdue_assignments chạy mỗi 10 phút tự động khóa bài quá hạn",
+    "Frontend AssignmentDetail & Practice hiển thị nút Nộp bài, Modal xác nhận, Reopen modal và chế độ Read-only",
+    "Tách chế độ BTVN: khi làm sai không chặn mà ghi nhận phương án và cho phép chuyển bài tiếp theo ngay lập tức, tránh brute-force thử-sai"
+  ],
+  "updated_at": "2026-10-13T09:58:00Z"
+}

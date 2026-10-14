@@ -1,0 +1,26 @@
+{
+  "task_id": "CAMS-0019",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix NameError in assignments endpoints causing 500 on assignment detail load",
+  "specialists_invoked": ["cams-backend", "cams-frontend", "cams-qa"],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Fixed missing imports (desc, SubmissionStatus) in assignments.py and added Promise.allSettled resilience in AssignmentDetail.tsx"
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-13T20:38:00+07:00"
+}

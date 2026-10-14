@@ -1,7 +1,7 @@
 # Giai đoạn 2: Thiết kế Hệ thống (System Design)
 
 > **CAMS — Chess Academy Management System**
-> Tài liệu con của [SDLC.md](./SDLC.md)
+> Tài liệu con của [SDLC.md](../01-sdlc/SDLC.md)
 
 ---
 

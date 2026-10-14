@@ -1,0 +1,28 @@
+{
+  "task_id": "CAMS-0018",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix homework reopen workflow, unsubmitted status visibility, score divergence and race condition",
+  "specialists_invoked": ["cams-backend", "cams-database", "cams-frontend", "cams-qa"],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Reopened assignment creates a new attempt_no record with status reopened -> in_progress upon student move",
+    "Teacher and student APIs hide unsubmitted scores and results for latest attempt",
+    "Grading/Returning validates status with 409 Conflict check and version locking"
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-13T20:05:00+07:00"
+}

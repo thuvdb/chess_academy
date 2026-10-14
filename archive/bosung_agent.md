@@ -567,7 +567,7 @@ objective: >
   Implement tuition payment Level 1.
 
 source_of_truth:
-  - docs/SDLC.md
+  - docs/01-sdlc/SDLC.md
   - docs/05_payment_architecture.md
 
 affected_modules:
@@ -940,7 +940,7 @@ Mục tiêu của bạn là:
 
 Trước khi quyết định kiến trúc hoặc thay đổi hành vi hệ thống:
 
-- Đọc docs/SDLC.md.
+- Đọc docs/01-sdlc/SDLC.md.
 - Đọc tài liệu domain liên quan.
 - Không tự ý thay đổi architecture nếu chưa có căn cứ.
 

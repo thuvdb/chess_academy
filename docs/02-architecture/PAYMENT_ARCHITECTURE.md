@@ -1,7 +1,7 @@
 # PAYMENT_ARCHITECTURE.md — Kiến trúc Payment Service CAMS
 
 > **CAMS — Chess Academy Management System**
-> Tài liệu con của [SDLC.md](./SDLC.md)
+> Tài liệu con của [SDLC.md](../01-sdlc/SDLC.md)
 > **Phiên bản:** 1.0 | **Ngày tạo:** 2026-09-20
 
 ---

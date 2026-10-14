@@ -171,12 +171,12 @@ docker compose down -v
 
 Các tài liệu thiết kế và kiến trúc chuyên sâu được lưu trữ tại thư mục `docs/`:
 
-- [docs/01_requirements.md](docs/01_requirements.md) — Đặc tả yêu cầu chức năng & phi chức năng.
-- [docs/02_system_design.md](docs/02_system_design.md) — Thiết kế kiến trúc tổng thể, luồng dữ liệu & ERD cơ sở dữ liệu.
-- [docs/AI_SCANNER_ARCHITECTURE.md](docs/AI_SCANNER_ARCHITECTURE.md) — Quy trình Computer Vision xử lý sách PDF và nhận diện bàn cờ.
-- [docs/PAYMENT_ARCHITECTURE.md](docs/PAYMENT_ARCHITECTURE.md) — Thiết kế luồng học phí, hóa đơn và tích hợp VietQR.
-- [docs/TOURNAMENT_ARCHITECTURE.md](docs/TOURNAMENT_ARCHITECTURE.md) — Thuật toán bốc thăm (Swiss/Round Robin) và xử lý giải đấu.
-- [docs/HANDOFF_SOP.md](docs/HANDOFF_SOP.md) — Quy trình bàn giao và checkpoint kỹ thuật.
+- [docs/01-sdlc/01_requirements.md](docs/01-sdlc/01_requirements.md) — Đặc tả yêu cầu chức năng & phi chức năng.
+- [docs/02-architecture/02_system_design.md](docs/02-architecture/02_system_design.md) — Thiết kế kiến trúc tổng thể, luồng dữ liệu & ERD cơ sở dữ liệu.
+- [docs/02-architecture/AI_SCANNER_ARCHITECTURE.md](docs/02-architecture/AI_SCANNER_ARCHITECTURE.md) — Quy trình Computer Vision xử lý sách PDF và nhận diện bàn cờ.
+- [docs/02-architecture/PAYMENT_ARCHITECTURE.md](docs/02-architecture/PAYMENT_ARCHITECTURE.md) — Thiết kế luồng học phí, hóa đơn và tích hợp VietQR.
+- [docs/02-architecture/TOURNAMENT_ARCHITECTURE.md](docs/02-architecture/TOURNAMENT_ARCHITECTURE.md) — Thuật toán bốc thăm (Swiss/Round Robin) và xử lý giải đấu.
+- [docs/03-operations/HANDOFF_SOP.md](docs/03-operations/HANDOFF_SOP.md) — Quy trình bàn giao và checkpoint kỹ thuật.
 
 ---
 
