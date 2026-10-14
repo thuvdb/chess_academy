@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 from app.models.user import User
 
-STAFF_ROLES = ("super_admin", "admin", "teacher")
+STAFF_ROLES = ("super_admin", "center_admin", "admin", "teacher")
 
 
 def is_staff(user: User) -> bool:
@@ -42,18 +42,35 @@ def ensure_scan_job_access(job, user: User) -> None:
 def ensure_puzzle_access(puzzle, user: User, write: bool = False) -> None:
     """
     Read: super_admin, global puzzles (center_id is NULL), unscoped users (user.center_id is NULL), or same center.
-    Write: super_admin, or staff of the puzzle's own center (global puzzles are super_admin only).
+    Write:
+      - super_admin: allowed everywhere.
+      - center_admin / admin: can modify any puzzle belonging to their own center.
+      - teacher: can only modify puzzles they personally created within their own center.
+      - cross-center access: 404 (never 403).
+      - same-center teacher modifying another teacher's puzzle: 403 Forbidden.
     """
     if user.role == "super_admin":
         return
+
     if write:
-        if getattr(puzzle, "created_by", None) == user.id:
+        # Cross center check: 404
+        if puzzle.center_id is not None and not same_center(user, puzzle.center_id):
+            raise HTTPException(404, detail="Puzzle not found")
+
+        # Center admin of same center can manage all puzzles in their center
+        if user.role in ("center_admin", "admin") and same_center(user, puzzle.center_id):
             return
-        if is_staff(user) and same_center(user, puzzle.center_id):
-            return
+
+        # Teacher: must be creator of the puzzle
+        if user.role == "teacher":
+            if getattr(puzzle, "created_by", None) == user.id:
+                return
+            raise HTTPException(403, detail="You can only modify your own puzzles")
     else:
+        # Read access
         if puzzle.center_id is None or user.center_id is None or same_center(user, puzzle.center_id):
             return
+
     raise HTTPException(404, detail="Puzzle not found")
 
 
@@ -65,7 +82,7 @@ def ensure_class_access(cls_dict: dict, user: User) -> None:
       - Classes with center_id = NULL are treated as "unscoped" (legacy/global) and
         accessible to any authenticated user — prevents regression for classes created
         before CAMS-0014 deployed center scoping.
-      - admin: own center only (when class has a center_id).
+      - admin / center_admin: own center only (when class has a center_id).
       - teacher / student / parent: own center only (when class has a center_id).
     Returns 404 (not 403) to avoid leaking class existence across centers.
     """
@@ -85,7 +102,7 @@ def ensure_class_ownership(cls_dict: dict, user: User) -> None:
 
     Rules (CAMS-0014 F3):
       - super_admin: always allowed.
-      - admin: allowed for classes within own center (or unscoped classes).
+      - admin / center_admin: allowed for classes within own center (or unscoped classes).
       - teacher: only own classes (teacher_id == user.id).
         Center check is skipped for unscoped (center_id = NULL) classes to avoid
         blocking teachers on legacy data.
@@ -93,11 +110,12 @@ def ensure_class_ownership(cls_dict: dict, user: User) -> None:
     if user.role == "super_admin":
         return
     class_center = cls_dict.get("center_id")
-    if user.role == "admin":
+    if user.role in ("admin", "center_admin"):
         # Allow admin to manage unscoped (legacy) classes or own-center classes.
         if class_center is None or same_center(user, class_center):
             return
         raise HTTPException(404, detail="Class not found")
+
     # teacher — must be the assigned teacher; center check only when class has a center_id
     if user.role == "teacher":
         is_owner = cls_dict.get("teacher_id") == user.id
@@ -106,4 +124,5 @@ def ensure_class_ownership(cls_dict: dict, user: User) -> None:
             return
         raise HTTPException(403, detail="You can only manage your own classes")
     raise HTTPException(403, detail="Insufficient permissions")
+
 

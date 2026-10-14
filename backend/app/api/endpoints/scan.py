@@ -31,13 +31,48 @@ router = APIRouter()
 # Max upload size: 50 MB
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 ALLOWED_TYPES = {"application/pdf", "application/x-pdf"}
-UPLOAD_ROLES = ("super_admin", "admin", "teacher")
+UPLOAD_ROLES = ("super_admin", "center_admin", "admin", "teacher")
 STAFF_ROLES = UPLOAD_ROLES
 PDF_MAGIC = b"%PDF-"
 READ_CHUNK_BYTES = 1024 * 1024
 
 
 from app.api.access import ensure_scan_job_access
+
+
+def _infer_puzzle_type_from_filename(filename: str | None) -> str:
+    """
+    Đoán puzzle_type từ tên file PDF để tự động phân loại đúng khi approve.
+
+    Ví dụ:
+      'mate4-odd-odd.pdf'  → 'mate-in-4'
+      'chieumat3.pdf'      → 'mate-in-3'
+      'mate_in_2.pdf'      → 'mate-in-2'
+      'tactics-fork.pdf'   → 'tactic'  (mặc định)
+    """
+    if not filename:
+        return "tactic"
+    import unicodedata
+    import re as _re
+    # Bỏ dấu tiếng Việt và chữ hoa
+    norm = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode('utf-8').lower()
+    
+    # Pattern 1: mate-in-N, mateN, mate N
+    m = _re.search(r'mate[-_ ]?(?:in[-_ ]?)?(\d)', norm)
+    if not m:
+        # Pattern 2: chieu het N, chieu mat N, chieu N
+        m = _re.search(r'chieu[-_ ]*(?:mat|het)?[-_ ]*(\d)', norm)
+    if not m:
+        # Pattern 3: N nuoc chieu, N nuoc mat, N nuoc het
+        m = _re.search(r'(\d)[-_ ]*nuoc[-_ ]*(?:chieu|mat|het)?', norm)
+    if not m:
+        # Pattern 4: matN (ngắn gọn)
+        m = _re.search(r'(?<![a-z])mat[-_ ]*(\d)', norm)
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 8:
+            return f"mate-in-{n}"
+    return "tactic"
 
 
 # ── Upload ────────────────────────────────────────────────────
@@ -87,11 +122,15 @@ async def upload_pdf(
         except ValueError:
             raise HTTPException(400, detail="Invalid center_id")
 
-    # If center_id not provided, try user's center_id
-    if not target_center_id and current_user.center_id:
+    # Strict center binding for non-super_admin callers
+    if current_user.role != "super_admin":
+        if not current_user.center_id:
+            raise HTTPException(400, detail="User is not assigned to any center.")
+        target_center_id = current_user.center_id
+    elif not target_center_id and current_user.center_id:
         target_center_id = current_user.center_id
 
-    # Verify center exists or fallback to first available center
+    # Verify center exists
     from sqlalchemy import select
     from app.models.center import Center
 
@@ -100,7 +139,7 @@ async def upload_pdf(
         res = await db.execute(select(Center.id).where(Center.id == target_center_id))
         resolved_center_id = res.scalar_one_or_none()
 
-    if not resolved_center_id:
+    if not resolved_center_id and current_user.role == "super_admin":
         res = await db.execute(select(Center.id).limit(1))
         resolved_center_id = res.scalar_one_or_none()
 
@@ -148,13 +187,14 @@ async def list_jobs(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List scan jobs. Admins/teachers see all; students see only theirs."""
+    """List scan jobs. Scoped strictly to caller's center unless super_admin."""
+    center_filter = None if current_user.role == "super_admin" else current_user.center_id
     uploaded_by = None
-    if current_user.role not in ("super_admin", "admin", "teacher"):
+    if current_user.role not in ("super_admin", "center_admin", "admin", "teacher"):
         uploaded_by = current_user.id
 
     return await scan_service.list_scan_jobs(
-        db, uploaded_by=uploaded_by, status=status, skip=skip, limit=limit
+        db, center_id=center_filter, uploaded_by=uploaded_by, status=status, skip=skip, limit=limit
     )
 
 
@@ -279,9 +319,11 @@ async def approve_result(
                     title=f"{job.file_name} - Trang {result.page_number} / Bàn {result.board_index}",
                     description=f"Quét tự động từ tài liệu {job.file_name} (Trang {result.page_number}, Bàn {result.board_index})",
                     difficulty="easy",
-                    puzzle_type="tactic",
+                    # Tự nhận diện từ tên file; solver sẽ xác nhận lại khi chứng minh
+                    puzzle_type=_infer_puzzle_type_from_filename(job.file_name),
                 ),
                 center_id=job.center_id or current_user.center_id,
+                strict=False,
             )
             result.puzzle_id = puzzle.id
         except Exception as exc:
@@ -310,6 +352,8 @@ async def save_approved_puzzles_for_job(
 
     results = await scan_service.get_job_results(db, job_id)
     saved_count = 0
+    verified_count = 0
+    unverified: list[str] = []
     from app.schemas.puzzle import CreatePuzzleFromScanRequest
     from app.services import puzzle_service
 
@@ -326,18 +370,33 @@ async def save_approved_puzzles_for_job(
                             title=f"{job.file_name} - Trang {r.page_number} / Bàn {r.board_index}",
                             description=f"Quét tự động từ tài liệu {job.file_name} (Trang {r.page_number}, Bàn {r.board_index})",
                             difficulty="easy",
-                            puzzle_type="tactic",
+                            # Tự nhận diện từ tên file; solver sẽ xác nhận lại khi chứng minh
+                            puzzle_type=_infer_puzzle_type_from_filename(job.file_name),
                         ),
                         center_id=job.center_id or current_user.center_id,
+                        # Một bàn quét hỏng không được làm fail cả batch
+                        strict=False,
                     )
                     r.puzzle_id = puzzle.id
                     saved_count += 1
+                    if puzzle.solution_verified:
+                        verified_count += 1
+                    else:
+                        unverified.append(f"Trang {r.page_number} / Bàn {r.board_index}")
                 except Exception as exc:
                     import logging
                     logging.getLogger(__name__).warning("Batch create puzzle failed for %s: %s", r.id, exc)
 
     await db.commit()
-    return {"message": f"Successfully created {saved_count} puzzle(s)", "saved_count": saved_count}
+    msg = f"Đã tạo {saved_count} bài tập, {verified_count} bài có lời giải đã được chứng minh"
+    if unverified:
+        msg += f". {len(unverified)} bài cần giáo viên rà lại lời giải"
+    return {
+        "message": msg,
+        "saved_count": saved_count,
+        "verified_count": verified_count,
+        "needs_review": unverified,
+    }
 
 
 @router.post("/results/{result_id}/reject", response_model=ScanResultRead)

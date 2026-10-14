@@ -32,8 +32,8 @@ def _job(center_id=CENTER_A, uploaded_by=None):
     return SimpleNamespace(center_id=center_id, uploaded_by=uploaded_by or uuid.uuid4())
 
 
-def _puzzle(center_id=CENTER_A):
-    return SimpleNamespace(center_id=center_id)
+def _puzzle(center_id=CENTER_A, created_by=None):
+    return SimpleNamespace(center_id=center_id, created_by=created_by)
 
 
 def _cls(center_id=CENTER_A, teacher_id=None):
@@ -91,7 +91,16 @@ def test_puzzle_read_other_center_denied():
 
 
 def test_puzzle_write_rules():
-    ensure_puzzle_access(_puzzle(), _user("teacher"), write=True)
+    t = _user("teacher")
+    # Teacher can modify own puzzle in same center
+    ensure_puzzle_access(_puzzle(created_by=t.id), t, write=True)
+    # Teacher cannot modify colleague's puzzle in same center (403)
+    with pytest.raises(HTTPException) as exc:
+        ensure_puzzle_access(_puzzle(created_by=uuid.uuid4()), t, write=True)
+    assert exc.value.status_code == 403
+    # Center admin / admin can modify any puzzle in same center
+    ensure_puzzle_access(_puzzle(created_by=t.id), _user("center_admin"), write=True)
+    ensure_puzzle_access(_puzzle(created_by=t.id), _user("admin"), write=True)
     ensure_puzzle_access(_puzzle(center_id=None), _user("super_admin"), write=True)
     # global puzzles: super_admin only
     with pytest.raises(HTTPException):
@@ -99,9 +108,10 @@ def test_puzzle_write_rules():
     # students never write
     with pytest.raises(HTTPException):
         ensure_puzzle_access(_puzzle(), _user("student"), write=True)
-    # other center
-    with pytest.raises(HTTPException):
+    # other center -> 404
+    with pytest.raises(HTTPException) as exc:
         ensure_puzzle_access(_puzzle(center_id=CENTER_B), _user("admin"), write=True)
+    assert exc.value.status_code == 404
 
 
 # ── Storage: traversal + signed URLs ─────────────────────────

@@ -57,7 +57,8 @@ class SubscriptionPlan(str, enum.Enum):
 
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
-    ADMIN = "admin"
+    CENTER_ADMIN = "center_admin"
+    ADMIN = "admin"  # Backward compatibility
     TEACHER = "teacher"
     STUDENT = "student"
     PARENT = "parent"
@@ -92,6 +93,7 @@ class PuzzleType(str, enum.Enum):
     MATE_IN_1 = "mate_in_1"
     MATE_IN_2 = "mate_in_2"
     MATE_IN_3 = "mate_in_3"
+    MATE_IN_4 = "mate_in_4"
 
 
 class PuzzleSource(str, enum.Enum):
@@ -111,6 +113,16 @@ class ProgressStatus(str, enum.Enum):
 class GradingMethod(str, enum.Enum):
     AUTO_AI = "auto_ai"
     MANUAL_TEACHER = "manual_teacher"
+
+
+class SubmissionStatus(str, enum.Enum):
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    SUBMITTED = "submitted"
+    GRADED = "graded"
+    RETURNED = "returned"
+    REOPENED = "reopened"
+
 
 
 class PaymentMethod(str, enum.Enum):

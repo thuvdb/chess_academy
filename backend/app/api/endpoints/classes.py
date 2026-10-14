@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user
 from app.api.access import ensure_class_access, ensure_class_ownership
+from app.core.permissions import Role, is_super_admin, require_roles
 from app.models.user import User
 from app.schemas.class_ import (
     ClassCreate, ClassUpdate, ClassRead,
@@ -19,7 +20,7 @@ from app.services import class_service
 router = APIRouter()
 
 # Roles that can see student emails in the roster (F1 — CAMS-0014 decision 1)
-_EMAIL_VISIBLE_ROLES = {"super_admin", "admin", "teacher"}
+_EMAIL_VISIBLE_ROLES = {"super_admin", "center_admin", "admin", "teacher"}
 
 
 # ==================== Class Endpoints ====================
@@ -38,7 +39,7 @@ async def list_classes(
 ):
     """List classes. Non-super_admin callers see only their own center's classes (F2)."""
     # CAMS-0014 F2: scope to caller's center unless super_admin
-    center_filter = None if current_user.role == "super_admin" else current_user.center_id
+    center_filter = None if is_super_admin(current_user) else current_user.center_id
 
     # If student requests a specific student_id, enforce it's themselves
     if student_id and current_user.role == "student" and student_id != current_user.id:
@@ -73,7 +74,7 @@ async def get_class(
 async def create_class(
     data: ClassCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "super_admin", "teacher"])),
+    current_user: User = Depends(require_roles(Role.SUPER_ADMIN, Role.CENTER_ADMIN, Role.TEACHER)),
 ):
     """Create a new class. Admin/teacher can only create within their own center."""
     # Bind center_id to caller's center when not super_admin
@@ -92,7 +93,7 @@ async def update_class(
     class_id: uuid.UUID,
     data: ClassUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "super_admin", "teacher"])),
+    current_user: User = Depends(require_roles(Role.SUPER_ADMIN, Role.CENTER_ADMIN, Role.TEACHER)),
 ):
     """Update a class. Teacher can only update their own classes within their center."""
     existing = await class_service.get_class_by_id(db, class_id)
@@ -112,7 +113,7 @@ async def update_class(
 async def delete_class(
     class_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "super_admin"])),
+    current_user: User = Depends(require_roles(Role.SUPER_ADMIN, Role.CENTER_ADMIN)),
 ):
     """Hard-delete a class. Admin can only delete within own center (F2)."""
     existing = await class_service.get_class_by_id(db, class_id)
@@ -157,7 +158,7 @@ async def list_class_students(
         and cls.get("teacher_id") == current_user.id
     )
     include_email = (
-        current_user.role in {"super_admin", "admin"} or is_class_teacher
+        current_user.role in {"super_admin", "center_admin", "admin"} or is_class_teacher
     )
 
     # Students and parents can only view active classmates
@@ -179,7 +180,7 @@ async def enroll_student(
     class_id: uuid.UUID,
     data: EnrollmentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "super_admin", "teacher"])),
+    current_user: User = Depends(require_roles(Role.SUPER_ADMIN, Role.CENTER_ADMIN, Role.TEACHER)),
 ):
     """Add a student to a class. Teacher can only enroll in their own class (F3)."""
     cls = await class_service.get_class_by_id(db, class_id)
@@ -203,7 +204,7 @@ async def unenroll_student(
     class_id: uuid.UUID,
     student_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "super_admin", "teacher"])),
+    current_user: User = Depends(require_roles(Role.SUPER_ADMIN, Role.CENTER_ADMIN, Role.TEACHER)),
 ):
     """Remove a student from a class. Teacher can only unenroll from their own class (F3)."""
     cls = await class_service.get_class_by_id(db, class_id)

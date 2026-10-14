@@ -12,28 +12,48 @@ from app.core.security import (
 )
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead
-from app.schemas.auth import Token, RefreshRequest, OAuthRequest
+from app.schemas.user import UserRead
+from app.schemas.auth import (
+    Token, RefreshRequest, OAuthRequest, 
+    AuthConfigResponse, UserPublicRegister
+)
 from app.api.deps import get_current_user
 
 router = APIRouter()
 
+@router.get("/config", response_model=AuthConfigResponse)
+async def get_auth_config():
+    """Public read-only config indicating allowed auth capabilities."""
+    return {
+        "allow_public_register": settings.ALLOW_PUBLIC_REGISTER,
+        "google_auth_enabled": bool(settings.GOOGLE_CLIENT_ID),
+        "facebook_auth_enabled": bool(settings.FACEBOOK_CLIENT_ID),
+    }
+
 @router.post("/register", response_model=UserRead)
-async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(user_in: UserPublicRegister, db: AsyncSession = Depends(get_db)):
+    if not settings.ALLOW_PUBLIC_REGISTER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public registration is disabled. Please contact your center administrator to receive an account.",
+        )
     result = await db.execute(select(User).where(User.email == user_in.email))
     if result.scalars().first():
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
+    # Role is strictly forced to 'student', center_id is strictly None for public self-registration.
     user = User(
         email=user_in.email,
         password_hash=hash_password(user_in.password),
         full_name=user_in.full_name,
         phone=user_in.phone,
         date_of_birth=user_in.date_of_birth,
-        role=user_in.role,
-        center_id=user_in.center_id,
+        role="student",
+        center_id=None,
+        is_active=True,
+        elo_rating=800,
     )
     db.add(user)
     await db.commit()
@@ -86,30 +106,32 @@ async def google_auth(req: OAuthRequest, db: AsyncSession = Depends(get_db)):
         
     email = user_info.get("email")
     google_id = user_info.get("sub")
-    full_name = user_info.get("name", "Google User")
     avatar_url = user_info.get("picture")
 
     if not email:
-        raise HTTPException(status_code=400, detail="No email from Google")
+        raise HTTPException(status_code=400, detail="No email provided by Google")
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
     
-    if user:
-        if not user.google_id:
-            user.google_id = google_id
-            await db.commit()
-    else:
-        user = User(
-            email=email,
-            full_name=full_name,
-            google_id=google_id,
-            avatar_url=avatar_url,
-            role="student"
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account not found. Please contact your center administrator to create an account before signing in.",
         )
-        db.add(user)
+
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+
+    changed = False
+    if not user.google_id:
+        user.google_id = google_id
+        changed = True
+    if not user.avatar_url and avatar_url:
+        user.avatar_url = avatar_url
+        changed = True
+    if changed:
         await db.commit()
-        await db.refresh(user)
 
     return {
         "access_token": create_access_token({"sub": str(user.id)}),
@@ -129,31 +151,33 @@ async def facebook_auth(req: OAuthRequest, db: AsyncSession = Depends(get_db)):
         
     email = user_info.get("email")
     facebook_id = user_info.get("id")
-    full_name = user_info.get("name", "Facebook User")
     picture_data = user_info.get("picture", {}).get("data", {})
     avatar_url = picture_data.get("url")
 
     if not email:
-        raise HTTPException(status_code=400, detail="No email from Facebook")
+        raise HTTPException(status_code=400, detail="No email provided by Facebook")
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
     
-    if user:
-        if not user.facebook_id:
-            user.facebook_id = facebook_id
-            await db.commit()
-    else:
-        user = User(
-            email=email,
-            full_name=full_name,
-            facebook_id=facebook_id,
-            avatar_url=avatar_url,
-            role="student"
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account not found. Please contact your center administrator to create an account before signing in.",
         )
-        db.add(user)
+
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+
+    changed = False
+    if not user.facebook_id:
+        user.facebook_id = facebook_id
+        changed = True
+    if not user.avatar_url and avatar_url:
+        user.avatar_url = avatar_url
+        changed = True
+    if changed:
         await db.commit()
-        await db.refresh(user)
 
     return {
         "access_token": create_access_token({"sub": str(user.id)}),
@@ -164,3 +188,4 @@ async def facebook_auth(req: OAuthRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserRead)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+

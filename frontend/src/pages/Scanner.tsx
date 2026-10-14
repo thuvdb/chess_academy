@@ -189,8 +189,7 @@ export default function Scanner() {
         scan_result_id: result.id,
         title: `${selectedJob?.file_name || 'Scan'} - Trang ${result.page_number} / Bàn ${result.board_index}`,
         description: `Bài tập từ sách ${selectedJob?.file_name || ''} (Trang ${result.page_number}, Bàn ${result.board_index})`,
-        difficulty: 'beginner',
-        puzzle_type: 'tactics',
+        difficulty: 'easy',
       });
       setResults(prev => prev.map(r => r.id === result.id ? { ...r, puzzle_id: data.id } : r));
       toast.success('Đã lưu bài tập vào Thư viện Puzzle Bank!');
