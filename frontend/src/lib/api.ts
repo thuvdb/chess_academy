@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+const isProduction = import.meta.env.PROD;
+const defaultBaseURL = isProduction ? '/api' : 'http://localhost:8000/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_URL || defaultBaseURL,
+  timeout: 20000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -15,14 +19,31 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-logout on 401
+// Auto-logout on 401 & handle network timeouts gracefully
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
       useAuthStore.getState().logout();
       window.location.href = '/login';
+      return Promise.reject(err);
     }
+
+    if (err.code === 'ECONNABORTED' || !err.response) {
+      const customMessage = 'Kết nối máy chủ bị gián đoạn hoặc phản hồi quá chậm (timeout). Vui lòng thử lại.';
+      if (err.response) {
+        err.response.data = { detail: customMessage, ...err.response.data };
+      } else {
+        err.response = {
+          data: { detail: customMessage },
+          status: 504,
+          statusText: 'Gateway Timeout',
+          headers: {},
+          config: err.config,
+        };
+      }
+    }
+
     return Promise.reject(err);
   }
 );

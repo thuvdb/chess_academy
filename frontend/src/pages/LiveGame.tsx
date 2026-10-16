@@ -84,7 +84,9 @@ export default function LiveGame() {
   useEffect(() => {
     if (!gameId || !token) return;
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-    const wsBase = apiUrl.replace(/^http/, 'ws').replace('/api', '');
+    const wsBase = apiUrl.startsWith('http')
+      ? apiUrl.replace(/^http/, 'ws').replace(/\/api\/?$/, '')
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${apiUrl.replace(/\/api\/?$/, '')}`;
     const wsUrl = `${wsBase}/ws/game/${gameId}?token=${token}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

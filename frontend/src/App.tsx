@@ -22,11 +22,13 @@ import Invoices from './pages/Invoices';
 import Profile from './pages/Profile';
 import Members from './pages/Members';
 import Settings from './pages/Settings';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Toaster
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster
         position="top-right"
         toastOptions={{
           style: {
@@ -68,6 +70,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

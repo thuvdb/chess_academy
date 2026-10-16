@@ -15,4 +15,26 @@ export default defineConfig({
       clientPort: 3000,
     },
   },
+  preview: {
+    host: true,
+    port: 3000,
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router') || id.includes('node_modules/zustand/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/lucide-react/') || id.includes('node_modules/react-hot-toast/')) {
+            return 'vendor-ui';
+          }
+          if (id.includes('node_modules/chess.js/') || id.includes('node_modules/react-chessboard/')) {
+            return 'vendor-chess';
+          }
+        },
+      },
+    },
+  },
 })

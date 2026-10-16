@@ -1,0 +1,35 @@
+{
+  "task_id": "CAMS-0028",
+  "type": "INFRA",
+  "state": "DONE",
+  "title": "Resolve Vietnam-to-Canada high latency white screen: production Nginx Docker container and React ErrorBoundary",
+  "specialists_invoked": [
+    "cams-devops",
+    "cams-frontend",
+    "cams-qa",
+    "cams-security"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "APPROVED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Container frontend on VPS was running Vite dev server (npm run dev) loading unbundled .tsx modules across high-latency link. Replaced with multi-stage production Nginx image serving bundled/gzip-compressed static files on port 3000.",
+    "React ErrorBoundary added to catch runtime rendering errors and slow API failures, displaying user-friendly recovery UI instead of blank white screen.",
+    "api.ts configured with 20s timeout and clear error messaging for slow network.",
+    "Nginx config proxies /api/ to backend:8000 and /ws to backend:8000 for seamless single-origin requests on port 3000.",
+    "LiveGame.tsx WebSocket URL patched to support both relative and absolute API URLs."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-16T17:22:30+07:00"
+}
