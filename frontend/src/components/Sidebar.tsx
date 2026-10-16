@@ -12,6 +12,7 @@ import {
   Trophy,
   ClipboardList,
   Users,
+  User,
   UserCog,
   Settings,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { to: '/fee-plans', label: 'Fee Plans', icon: ClipboardList, roles: ['super_admin', 'admin', 'center_admin'] },
   { to: '/invoices', label: 'Invoices', icon: ClipboardList },
   { to: '/tournaments', label: 'Tournaments', icon: Trophy },
+  { to: '/profile', label: 'Hồ sơ cá nhân', icon: User },
   { to: '/settings', label: 'Cài đặt', icon: Settings },
 ];
 
@@ -114,7 +116,8 @@ export default function Sidebar() {
       {/* User + Logout */}
       <div className="px-3 pb-4 border-t border-slate-800 pt-4">
         <div 
-          onClick={() => navigate('/settings')}
+          onClick={() => navigate('/profile')}
+          title="Hồ sơ cá nhân"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/80 border border-slate-700/50 mb-2 cursor-pointer hover:bg-slate-800 hover:border-slate-600 transition-all"
         >
           <div className="w-8 h-8 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">

@@ -9,6 +9,7 @@ import { useRef } from 'react';
 interface ProfileForm {
   full_name: string;
   username: string;
+  phone?: string;
   bio: string;
   location: string;
   country: string;
@@ -33,6 +34,7 @@ const Profile = () => {
         reset({
           full_name: data.full_name || '',
           username: data.username || '',
+          phone: data.phone || '',
           bio: data.bio || '',
           location: data.location || '',
           country: data.country || 'Vietnam',
@@ -159,6 +161,15 @@ const Profile = () => {
                 <input 
                   type="text" 
                   {...register('full_name')}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Phone</label>
+                <input 
+                  type="tel" 
+                  {...register('phone')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>

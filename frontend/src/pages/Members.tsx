@@ -200,10 +200,13 @@ const Members = () => {
 
     setUpdating(true);
     try {
+      const isSelfSuperAdmin = editingMember.id === user?.id && editingMember.role === 'super_admin';
+      const targetRole = isSelfSuperAdmin ? 'super_admin' : editRole;
+
       const payload: Record<string, any> = {
         full_name: editFullName.trim(),
         email: editEmail.trim().toLowerCase(),
-        role: editRole,
+        role: targetRole,
         phone: editPhone.trim() || undefined,
         is_active: editIsActive,
       };
@@ -212,8 +215,10 @@ const Members = () => {
         payload.password = editPassword;
       }
 
-      if (isSuperAdmin && editRole !== 'super_admin') {
+      if (isSuperAdmin && targetRole !== 'super_admin') {
         payload.center_id = editCenterId || undefined;
+      } else if (targetRole === 'super_admin') {
+        payload.center_id = null;
       }
 
       await api.patch(`/users/${editingMember.id}`, payload);
@@ -681,12 +686,14 @@ const Members = () => {
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Vai trò (Role)
                 </label>
-                {isSuperAdmin ? (
+                {(isSuperAdmin || editingMember.role === 'super_admin') ? (
                   <select
                     value={editRole}
                     onChange={(e) => setEditRole(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"
+                    disabled={editingMember.id === user?.id && editingMember.role === 'super_admin'}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
+                    <option value="super_admin">Quản trị cấp cao (Super Admin)</option>
                     <option value="center_admin">Admin trung tâm</option>
                     <option value="teacher">Giáo viên</option>
                     <option value="student">Học sinh</option>
@@ -703,10 +710,15 @@ const Members = () => {
                     <option value="parent">Phụ huynh</option>
                   </select>
                 )}
+                {editingMember.id === user?.id && editingMember.role === 'super_admin' && (
+                  <p className="text-[11px] text-amber-400/90 mt-1">
+                    Không thể tự thay đổi vai trò của chính mình.
+                  </p>
+                )}
               </div>
 
-              {/* Cơ sở (chỉ Super Admin mới đổi được cơ sở) */}
-              {isSuperAdmin && editRole !== 'super_admin' && (
+              {/* Cơ sở (chỉ Super Admin mới đổi được cơ sở, và không áp dụng cho super_admin) */}
+              {isSuperAdmin && editRole !== 'super_admin' && editingMember.role !== 'super_admin' && (
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
                     <Building className="w-3.5 h-3.5 text-amber-400" />

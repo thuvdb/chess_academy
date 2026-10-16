@@ -22,7 +22,7 @@ import api from '../lib/api';
 import { settingsApi, type SettingItem, type CatalogItem } from '../lib/settingsApi';
 
 export default function Settings() {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const role = user?.role || 'student';
   const isSuperAdmin = role === 'super_admin';
   const isCenterAdmin = role === 'center_admin' || role === 'admin';
@@ -37,6 +37,65 @@ export default function Settings() {
 
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [loading, setLoading] = useState(false);
+
+  // Profile form state
+  const [profileFullName, setProfileFullName] = useState(user?.full_name || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
+  const [profileBio, setProfileBio] = useState(user?.bio || '');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
+  const [profileUpdating, setProfileUpdating] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileFullName(user.full_name || '');
+      setProfilePhone(user.phone || '');
+      setProfileBio(user.bio || '');
+    }
+  }, [user]);
+
+  // Handle Profile Update
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileFullName.trim()) {
+      toast.error('Họ và tên không được để trống');
+      return;
+    }
+
+    if (profilePassword) {
+      if (profilePassword.length < 6) {
+        toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+        return;
+      }
+      if (profilePassword !== profileConfirmPassword) {
+        toast.error('Mật khẩu xác nhận không khớp');
+        return;
+      }
+    }
+
+    setProfileUpdating(true);
+    try {
+      const payload: Record<string, any> = {
+        full_name: profileFullName.trim(),
+        phone: profilePhone.trim() || null,
+        bio: profileBio.trim() || null,
+      };
+
+      if (profilePassword) {
+        payload.password = profilePassword;
+      }
+
+      const res = await api.put('/users/me', payload);
+      setUser(res.data);
+      setProfilePassword('');
+      setProfileConfirmPassword('');
+      toast.success('Cập nhật hồ sơ thành công!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Cập nhật hồ sơ thất bại');
+    } finally {
+      setProfileUpdating(false);
+    }
+  };
 
   // Settings state
   const [settingsList, setSettingsList] = useState<SettingItem[]>([]);
@@ -680,30 +739,171 @@ export default function Settings() {
 
       {/* Tab 4: Profile */}
       {activeTab === 'profile' && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <User className="w-5 h-5 text-amber-400" />
-            Hồ sơ tài khoản
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Họ và tên</span>
-              <p className="text-sm font-semibold text-white">{user?.full_name}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Email đăng nhập</span>
-              <p className="text-sm font-semibold text-white">{user?.email}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Điểm Elo / Rating</span>
-              <p className="text-sm font-bold text-amber-400">{user?.elo_rating || 800}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Cơ sở trực thuộc</span>
-              <p className="text-sm font-semibold text-blue-400">
-                {isSuperAdmin ? 'Toàn hệ thống' : user?.center_name || 'Trung tâm'}
+        <div className="space-y-6 animate-fadeIn">
+          {/* Read-only Metadata Badges / Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-lg space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Email đăng nhập
+              </span>
+              <p className="text-sm font-semibold text-white truncate" title={user?.email}>
+                {user?.email || 'N/A'}
               </p>
             </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-lg space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Vai trò
+              </span>
+              <p className="text-sm font-semibold text-amber-400 capitalize">
+                {user?.role === 'super_admin'
+                  ? 'Quản trị cấp cao'
+                  : user?.role === 'center_admin'
+                  ? 'Admin trung tâm'
+                  : user?.role === 'teacher'
+                  ? 'Giáo viên'
+                  : user?.role === 'student'
+                  ? 'Học sinh'
+                  : user?.role === 'parent'
+                  ? 'Phụ huynh'
+                  : user?.role?.replace('_', ' ')}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-lg space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Cơ sở trực thuộc
+              </span>
+              <p className="text-sm font-semibold text-blue-400 truncate">
+                {user?.role === 'super_admin' ? 'Toàn hệ thống' : user?.center_name || 'Trung tâm'}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-lg space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Điểm Elo / Rating
+              </span>
+              <p className="text-sm font-bold text-emerald-400">
+                {user?.elo_rating || 800}
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive Profile Edit Form */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Chỉnh sửa hồ sơ cá nhân</h2>
+                <p className="text-xs text-slate-400">
+                  Cập nhật họ và tên, số điện thoại, tiểu sử hoặc đặt mật khẩu mới cho tài khoản.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Họ và tên */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Họ và tên <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={profileFullName}
+                    onChange={(e) => setProfileFullName(e.target.value)}
+                    placeholder="Nguyễn Văn A"
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm focus:border-amber-400 focus:outline-none transition-colors"
+                    required
+                  />
+                </div>
+
+                {/* Số điện thoại */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Số điện thoại
+                  </label>
+                  <input
+                    type="tel"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    placeholder="vd: 0988888888"
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:border-amber-400 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Tiểu sử */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Tiểu sử (Bio)
+                </label>
+                <textarea
+                  value={profileBio}
+                  onChange={(e) => setProfileBio(e.target.value)}
+                  rows={3}
+                  placeholder="Giới thiệu ngắn về bản thân, phong cách chơi cờ hoặc kinh nghiệm..."
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:border-amber-400 focus:outline-none resize-none transition-colors"
+                />
+              </div>
+
+              {/* Đổi mật khẩu trong Profile */}
+              <div className="pt-4 border-t border-slate-800 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-slate-200">
+                    Đặt lại mật khẩu mới (Tùy chọn)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="text-xs font-medium text-slate-400 block mb-1.5">
+                      Mật khẩu mới
+                    </label>
+                    <input
+                      type="password"
+                      value={profilePassword}
+                      onChange={(e) => setProfilePassword(e.target.value)}
+                      placeholder="Để trống nếu không muốn đổi"
+                      minLength={6}
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:border-amber-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-slate-400 block mb-1.5">
+                      Xác nhận mật khẩu mới
+                    </label>
+                    <input
+                      type="password"
+                      value={profileConfirmPassword}
+                      onChange={(e) => setProfileConfirmPassword(e.target.value)}
+                      placeholder="Xác nhận lại mật khẩu mới"
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:border-amber-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end pt-4 border-t border-slate-800">
+                <button
+                  type="submit"
+                  disabled={profileUpdating}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                >
+                  {profileUpdating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {profileUpdating ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

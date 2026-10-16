@@ -143,6 +143,19 @@ class FakeUserDB:
         except Exception:
             pass
 
+        # Extract criteria values
+        try:
+            for clause in getattr(statement, "_where_criteria", ()):
+                right_val = getattr(getattr(clause, "right", None), "value", None)
+                if right_val is not None:
+                    str_right = str(right_val)
+                    if str_right in self.users:
+                        return MockScalarResult(self.users[str_right])
+                    if isinstance(right_val, str) and right_val in self.users:
+                        return MockScalarResult(self.users[right_val])
+        except Exception:
+            pass
+
         # Email lookups
         for key, val in params.items():
             if isinstance(val, str) and "@" in val:
@@ -197,6 +210,7 @@ def fake_user_db():
         role=Role.SUPER_ADMIN.value,
         center_id=None,
         is_active=True,
+        elo_rating=800,
     )
     center_admin_a = User(
         id=uuid.uuid4(),
@@ -205,6 +219,7 @@ def fake_user_db():
         role=Role.CENTER_ADMIN.value,
         center_id=CENTER_A,
         is_active=True,
+        elo_rating=800,
     )
     teacher_a = User(
         id=uuid.uuid4(),
@@ -213,6 +228,7 @@ def fake_user_db():
         role=Role.TEACHER.value,
         center_id=CENTER_A,
         is_active=True,
+        elo_rating=800,
     )
     student_a = User(
         id=uuid.uuid4(),
@@ -221,6 +237,7 @@ def fake_user_db():
         role=Role.STUDENT.value,
         center_id=CENTER_A,
         is_active=True,
+        elo_rating=800,
     )
     student_b = User(
         id=uuid.uuid4(),
@@ -229,6 +246,7 @@ def fake_user_db():
         role=Role.STUDENT.value,
         center_id=CENTER_B,
         is_active=True,
+        elo_rating=800,
     )
     db.add_user(super_admin)
     db.add_user(center_admin_a)
@@ -328,3 +346,66 @@ async def test_link_parent_student_different_center_rejected(api_client, fake_us
     response = await api_client.post(f"/api/users/{parent_a.id}/students/{student_b.id}")
     # Caller center_admin_a belongs to CENTER_A, student_b belongs to CENTER_B -> 404
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_super_admin_cannot_demote_themselves(api_client, fake_user_db):
+    """Super admin cannot change their own role to center_admin or student."""
+    super_admin = fake_user_db.users["super_admin@cams.vn"]
+    api_client.state["current_user"] = super_admin
+
+    response = await api_client.put(
+        f"/api/users/{super_admin.id}",
+        json={"role": "center_admin", "full_name": "Demoted Super Admin"}
+    )
+    assert response.status_code == 400
+    assert "Super admin cannot demote their own account" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_super_admin_update_profile_and_center_id_none(api_client, fake_user_db):
+    """Super admin retains role super_admin and center_id remains None."""
+    super_admin = fake_user_db.users["super_admin@cams.vn"]
+    api_client.state["current_user"] = super_admin
+
+    response = await api_client.put(
+        f"/api/users/{super_admin.id}",
+        json={
+            "full_name": "Super Admin Updated",
+            "phone": "0912345678",
+            "role": "super_admin",
+            "center_id": str(CENTER_A),
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["full_name"] == "Super Admin Updated"
+    assert data["role"] == "super_admin"
+    assert data["center_id"] is None
+    assert super_admin.center_id is None
+
+
+@pytest.mark.asyncio
+async def test_update_me_profile_and_password(api_client, fake_user_db):
+    """PUT /api/users/me updates profile fields and password."""
+    student = fake_user_db.users["student_a@cams.vn"]
+    api_client.state["current_user"] = student
+
+    response = await api_client.put(
+        "/api/users/me",
+        json={
+            "full_name": "Student A Updated",
+            "phone": "0987654321",
+            "bio": "Love chess and solving tactics",
+            "password": "NewSecurePassword123!",
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["full_name"] == "Student A Updated"
+    assert data["phone"] == "0987654321"
+    assert data["bio"] == "Love chess and solving tactics"
+
+    from app.core.security import verify_password
+    assert verify_password("NewSecurePassword123!", student.password_hash) is True
+

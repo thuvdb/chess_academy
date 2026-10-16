@@ -10,6 +10,8 @@ export interface User {
   elo_rating: number;
   center_id?: string;
   center_name?: string | null;
+  phone?: string | null;
+  bio?: string | null;
 }
 
 interface AuthState {

@@ -1,0 +1,33 @@
+{
+  "task_id": "CAMS-0027",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix super_admin role edit in Members modal, interactive Profile form in Settings, and Sidebar profile navigation",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa",
+    "cams-security"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Issue 1: In Members.tsx & backend users.py, support super_admin in role dropdown, prevent self-demotion, support PUT & PATCH /api/users/{user_id}.",
+    "Issue 2: In Settings.tsx & backend users.py, convert Profile tab to interactive form supporting full_name, phone, bio, password update via PUT /api/users/me.",
+    "Issue 3: In Sidebar.tsx, add convenient navigation to /profile for all roles (via bottom user card click and navItems menu link), ensuring Profile.tsx works seamlessly."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-16T16:33:00+07:00"
+}

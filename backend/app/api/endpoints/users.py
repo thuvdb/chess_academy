@@ -36,12 +36,18 @@ router = APIRouter()
 
 
 @router.put("/me", response_model=UserRead)
+@router.patch("/me", response_model=UserRead)
 async def update_me(
     user_in: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     update_data = user_in.model_dump(exclude_unset=True)
+    if "password" in update_data:
+        pwd = update_data.pop("password")
+        if pwd:
+            current_user.password_hash = hash_password(pwd)
+
     for field, value in update_data.items():
         setattr(current_user, field, value)
 
@@ -299,6 +305,7 @@ async def get_user_detail(
     return target_user
 
 
+@router.put("/{user_id}", response_model=UserRead)
 @router.patch("/{user_id}", response_model=UserRead)
 async def update_user(
     user_id: uuid.UUID,
@@ -319,6 +326,18 @@ async def update_user(
 
     # Cross-center check: must return 404
     assert_same_center(current_user, target_user.center_id, detail="User not found")
+
+    # Super admin self-demotion prevention
+    if (
+        current_user.role == Role.SUPER_ADMIN.value
+        and str(target_user.id) == str(current_user.id)
+        and user_in.role is not None
+        and user_in.role != Role.SUPER_ADMIN.value
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Super admin cannot demote their own account.",
+        )
 
     if is_center_admin(current_user):
         # Cannot modify super_admin or other center_admins
@@ -358,6 +377,13 @@ async def update_user(
     if "center_id" in update_dict:
         if is_center_admin(current_user):
             update_dict.pop("center_id")  # Center admin cannot move user to another center
+
+    # Ensure super_admin center_id remains None even if a center_id is passed in update_dict
+    effective_role = update_dict.get("role", target_user.role)
+    if effective_role == Role.SUPER_ADMIN.value or target_user.role == Role.SUPER_ADMIN.value:
+        if "center_id" in update_dict:
+            update_dict["center_id"] = None
+        target_user.center_id = None
 
     for field, value in update_dict.items():
         setattr(target_user, field, value)

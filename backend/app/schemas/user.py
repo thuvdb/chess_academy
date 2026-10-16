@@ -71,4 +71,5 @@ class UserUpdate(BaseModel):
     country: str | None = None
     language: str | None = None
     timezone: str | None = None
+    password: str | None = Field(default=None, min_length=6, max_length=128)
 
