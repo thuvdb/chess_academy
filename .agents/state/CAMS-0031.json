@@ -1,0 +1,29 @@
+{
+  "task_id": "CAMS-0031",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "Create User Guides (teacher-guide.md, student-parent-guide.md, admin-guide.md) and update docs/README.md",
+  "specialists_invoked": [
+    "cams-architect"
+  ],
+  "gates": {
+    "qa": "NOT_REQUIRED",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "User guides are written in Vietnamese, detailed and non-technical for end users.",
+    "Roadmap features (VietQR, Realtime Tournament, Mobile App) are documented with placeholders as coming in v1.5 / v2.0."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-17T11:34:45+07:00"
+}

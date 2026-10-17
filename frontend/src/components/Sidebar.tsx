@@ -24,18 +24,28 @@ interface NavItem {
   roles?: string[];
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  center_admin: 'Admin trung tâm',
+  admin: 'Admin trung tâm',
+  teacher: 'Giáo viên',
+  student: 'Học sinh',
+  parent: 'Phụ huynh',
+};
+
 const navItems: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/classes', label: 'Classes', icon: BookOpen },
-  { to: '/schedule', label: 'Schedule', icon: Calendar },
-  { to: '/scanner', label: 'AI Scanner', icon: ScanSearch, roles: ['super_admin', 'admin', 'center_admin'] },
-  { to: '/puzzles', label: 'Puzzle Bank', icon: Swords },
+  { to: '/', label: 'Tổng quan', icon: LayoutDashboard },
+  { to: '/classes', label: 'Lớp học', icon: BookOpen },
+  { to: '/schedule', label: 'Lịch học', icon: Calendar },
+  { to: '/scanner', label: 'Quét AI bàn cờ', icon: ScanSearch, roles: ['super_admin', 'admin', 'center_admin', 'teacher'] },
+  { to: '/puzzles', label: 'Kho bài tập cờ', icon: Swords },
   { to: '/practice', label: 'Luyện tập', icon: Swords },
   { to: '/assignments', label: 'Bài tập về nhà', icon: ClipboardList },
   { to: '/leaderboard', label: 'Bảng xếp hạng', icon: Trophy },
-  { to: '/fee-plans', label: 'Fee Plans', icon: ClipboardList, roles: ['super_admin', 'admin', 'center_admin'] },
-  { to: '/invoices', label: 'Invoices', icon: ClipboardList },
-  { to: '/tournaments', label: 'Tournaments', icon: Trophy },
+  { to: '/fee-plans', label: 'Gói học phí', icon: ClipboardList, roles: ['super_admin', 'admin', 'center_admin'] },
+  { to: '/invoices', label: 'Học phí & Hóa đơn', icon: ClipboardList },
+  { to: '/tournaments', label: 'Giải đấu', icon: Trophy },
+  { to: '/members', label: 'Quản lý thành viên', icon: Users, roles: ['super_admin', 'admin', 'center_admin'] },
   { to: '/profile', label: 'Hồ sơ cá nhân', icon: User },
   { to: '/settings', label: 'Cài đặt', icon: Settings },
 ];
@@ -91,26 +101,6 @@ export default function Sidebar() {
             )}
           </NavLink>
         ))}
-        {(user?.role === 'super_admin' || user?.role === 'center_admin' || user?.role === 'admin') && (
-          <NavLink
-            to="/members"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group
-               ${isActive
-                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                 : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800'
-               }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Users className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-400' : ''}`} />
-                <span className="flex-1">Members</span>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-amber-400" />}
-              </>
-            )}
-          </NavLink>
-        )}
       </nav>
 
       {/* User + Logout */}
@@ -126,7 +116,9 @@ export default function Sidebar() {
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-semibold truncate">{user?.full_name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-slate-400 text-[10px] capitalize font-medium">{user?.role?.replace('_', ' ')}</span>
+              <span className="text-slate-400 text-[10px] font-medium">
+                {(user?.role && ROLE_LABELS[user.role]) || user?.role?.replace('_', ' ')}
+              </span>
               <span className="text-slate-600 text-[9px]">•</span>
               <span className="text-amber-400/90 text-[10px] font-semibold truncate max-w-[85px]">
                 {user?.role === 'super_admin' ? 'Toàn hệ thống' : (user?.center_name || 'Trung tâm')}
@@ -140,7 +132,7 @@ export default function Sidebar() {
           className="w-full flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-xs font-medium"
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          Đăng xuất
         </button>
       </div>
     </aside>

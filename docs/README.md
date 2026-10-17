@@ -43,9 +43,15 @@ Tài liệu triển khai, bảo trì và quy trình vận hành hệ thống.
 
 ---
 
-## 📁 04-guides — Hướng dẫn sử dụng
+## 📁 04-guides — Hướng dẫn sử dụng (User Guides)
 
-> 🚧 Thư mục dành cho hướng dẫn vận hành, onboarding, và FAQ — chưa có tài liệu.
+Bộ cẩm nang hướng dẫn sử dụng hệ thống chi tiết bằng tiếng Việt dành cho từng nhóm người dùng.
+
+| File | Đối tượng | Nội dung chính |
+|------|-----------|----------------|
+| [teacher-guide.md](./04-guides/teacher-guide.md) | Giáo viên & HLV | Quản lý lớp, thời khóa biểu, hướng dẫn chi tiết AI Scanner, kho bài tập FEN/Stockfish, giao & chấm bài tập |
+| [student-parent-guide.md](./04-guides/student-parent-guide.md) | Học viên & Phụ huynh | Xem lớp học & lịch học, cách làm bài tập (kéo-thả/bấm chọn, hint, deadline), luyện tập tự do & bảng xếp hạng ELO |
+| [admin-guide.md](./04-guides/admin-guide.md) | Quản trị viên Trung tâm | Dashboard thống kê, quản lý thành viên & liên kết Phụ huynh - Học sinh, quản lý lớp học & phân công giáo viên |
 
 ---
 
@@ -59,7 +65,8 @@ docs/
 │   ├── SDLC.md        ← Điểm vào chính, liên kết tới tất cả tài liệu SDLC
 │   ├── 01_requirements.md
 │   ├── 03_sprint_plan.md
-│   └── 04_testing.md
+│   ├── 04_testing.md
+│   └── UAT_CHECKLIST.md
 │
 ├── 02-architecture/
 │   ├── 02_system_design.md
@@ -70,9 +77,13 @@ docs/
 ├── 03-operations/
 │   ├── 05_deployment.md
 │   ├── 06_maintenance.md
-│   └── HANDOFF_SOP.md
+│   ├── HANDOFF_SOP.md
+│   └── VPS_LATENCY_OPTIMIZATION_REPORT.md
 │
-└── 04-guides/         ← (trống, sẵn sàng)
+└── 04-guides/         ← Bộ cẩm nang Hướng dẫn sử dụng v1.0
+    ├── teacher-guide.md
+    ├── student-parent-guide.md
+    └── admin-guide.md
 ```
 
 ---

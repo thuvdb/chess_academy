@@ -36,7 +36,7 @@ export default function ClassForm({ initialData, onClose }: Props) {
   useEffect(() => {
     if (user?.role && user.role !== 'teacher' && user.role !== 'student') {
       api.get('/users/members?limit=100').then(res => {
-        setTeachers(res.data.filter((u: any) => u.role === 'teacher'));
+        setTeachers(Array.isArray(res?.data) ? res.data.filter((u: any) => u?.role === 'teacher') : []);
       }).catch(err => console.error(err));
     }
   }, [user?.role]);
@@ -50,13 +50,20 @@ export default function ClassForm({ initialData, onClose }: Props) {
         teacher_id: initialData.teacher_id ?? '',
       });
       // Convert schedule_json to slots
-      if (initialData.schedule_json) {
+      if (initialData.schedule_json && typeof initialData.schedule_json === 'object') {
         const parsed: ScheduleSlot[] = [];
         Object.entries(initialData.schedule_json).forEach(([day, times]) => {
-          times.forEach(timeStr => {
-            const [start, end] = timeStr.split('-');
+          if (Array.isArray(times)) {
+            times.forEach(timeStr => {
+              if (typeof timeStr === 'string') {
+                const [start, end] = timeStr.split('-');
+                parsed.push({ day, start_time: start || '', end_time: end || '' });
+              }
+            });
+          } else if (typeof times === 'string') {
+            const [start, end] = (times as string).split('-');
             parsed.push({ day, start_time: start || '', end_time: end || '' });
-          });
+          }
         });
         setSlots(parsed);
       }
@@ -70,7 +77,7 @@ export default function ClassForm({ initialData, onClose }: Props) {
 
   const buildScheduleJson = (): Record<string, string[]> => {
     const result: Record<string, string[]> = {};
-    slots.forEach(({ day, start_time, end_time }) => {
+    (slots || []).forEach(({ day, start_time, end_time }) => {
       if (!result[day]) result[day] = [];
       const timeStr = end_time ? `${start_time}-${end_time}` : start_time;
       if (!result[day].includes(timeStr)) result[day].push(timeStr);

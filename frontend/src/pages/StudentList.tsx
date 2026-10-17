@@ -18,13 +18,13 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 function ScheduleDisplay({ schedule }: { schedule: Record<string, string[]> | null }) {
-  if (!schedule || Object.keys(schedule).length === 0) {
+  if (!schedule || typeof schedule !== 'object' || Object.keys(schedule).length === 0) {
     return <span className="text-slate-500 text-sm">No schedule set</span>;
   }
   return (
     <div className="flex flex-wrap gap-2">
       {Object.entries(schedule).map(([day, times]) =>
-        times.map(time => (
+        (Array.isArray(times) ? times : (typeof times === 'string' ? [times] : [])).map(time => (
           <span key={`${day}-${time}`} className="bg-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-lg border border-slate-600">
             {day} {time}
           </span>
@@ -63,8 +63,9 @@ export default function StudentList() {
     )
   );
 
-  const activeStudents = students.filter(s => s.status === 'active');
-  const inactiveStudents = students.filter(s => s.status === 'inactive');
+  const safeStudents = Array.isArray(students) ? students : [];
+  const activeStudents = safeStudents.filter(s => s?.status === 'active');
+  const inactiveStudents = safeStudents.filter(s => s?.status === 'inactive');
   const displayedStudents = canManage
     ? (studentTab === 'active' ? activeStudents : inactiveStudents)
     : activeStudents;
@@ -78,7 +79,7 @@ export default function StudentList() {
         getClassStudents(classId),
       ]);
       setCls(clsRes.data);
-      setStudents(stuRes.data);
+      setStudents(Array.isArray(stuRes.data) ? stuRes.data : []);
     } catch {
       toast.error('Failed to load class details');
     } finally {
@@ -110,7 +111,7 @@ export default function StudentList() {
       setSearching(true);
       try {
         const res = await searchMembers(searchQuery);
-        setSearchResults(res.data);
+        setSearchResults(Array.isArray(res.data) ? res.data : []);
         setShowDropdown(true);
       } catch {
         setSearchResults([]);
@@ -329,9 +330,9 @@ export default function StudentList() {
                 )}
 
                 {/* Dropdown results */}
-                {showDropdown && searchResults.length > 0 && (
+                {showDropdown && (searchResults || []).length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-20 overflow-hidden">
-                    {searchResults.map(s => (
+                    {(searchResults || []).map(s => (
                       <button
                         key={s.id}
                         onClick={() => handleSelectStudent(s)}
@@ -348,7 +349,7 @@ export default function StudentList() {
                     ))}
                   </div>
                 )}
-                {showDropdown && searchResults.length === 0 && searchQuery.length >= 2 && !searching && (
+                {showDropdown && (searchResults || []).length === 0 && searchQuery.length >= 2 && !searching && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-20 px-4 py-3 text-slate-400 text-sm">
                     No students found for "{searchQuery}"
                   </div>
@@ -370,7 +371,7 @@ export default function StudentList() {
           </div>
         )}
 
-        {displayedStudents.length === 0 ? (
+        {(!displayedStudents || displayedStudents.length === 0) ? (
           <div className="text-center py-12 text-slate-500">
             <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p>{studentTab === 'active' ? 'No active students enrolled yet' : 'No inactive or removed students'}</p>
@@ -389,7 +390,7 @@ export default function StudentList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30">
-              {displayedStudents.map((s, i) => (
+              {(displayedStudents || []).map((s, i) => (
                 <tr key={s.id} className="hover:bg-slate-700/20 transition-colors">
                   <td className="px-6 py-3 text-slate-500 text-sm">{i + 1}</td>
                   <td className="px-6 py-3">

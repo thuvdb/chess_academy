@@ -26,10 +26,12 @@ interface CalendarEvent {
 
 function parseEvents(classes: ClassItem[]): CalendarEvent[] {
   const events: CalendarEvent[] = [];
+  if (!Array.isArray(classes)) return events;
   classes.forEach(cls => {
-    if (!cls.schedule_json || !cls.is_active) return;
+    if (!cls?.schedule_json || typeof cls.schedule_json !== 'object' || !cls.is_active) return;
     Object.entries(cls.schedule_json).forEach(([day, times]) => {
-      times.forEach(time => {
+      const timesArr = Array.isArray(times) ? times : (typeof times === 'string' ? [times] : []);
+      timesArr.forEach(time => {
         const [hStr, mStr] = time.split(':');
         events.push({
           cls,
@@ -62,10 +64,12 @@ export default function Schedule() {
   const [weekBase, setWeekBase] = useState(new Date());
   const weekDates = getWeekDates(weekBase);
   const events = parseEvents(classes);
+  const safeClasses = Array.isArray(classes) ? classes : [];
+  const safeEvents = Array.isArray(events) ? events : [];
 
   useEffect(() => {
     getClasses({ limit: 100, is_active: true })
-      .then(r => setClasses(r.data))
+      .then(r => setClasses(Array.isArray(r.data) ? r.data : []))
       .catch(() => toast.error('Failed to load schedule'));
   }, []);
 
@@ -107,7 +111,7 @@ export default function Schedule() {
       </div>
 
       {/* No-schedule prompt */}
-      {classes.length === 0 && (
+      {safeClasses.length === 0 && (
         <div className="text-center py-16 text-slate-500">
           <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No active classes found</p>
@@ -116,7 +120,7 @@ export default function Schedule() {
       )}
 
       {/* Calendar Grid */}
-      {classes.length > 0 && (
+      {safeClasses.length > 0 && (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
           {/* Day headers */}
           <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-slate-700">
@@ -145,10 +149,10 @@ export default function Schedule() {
                 {dayNames.map((dn, di) => {
                   const date = weekDates[di];
                   const isToday = date.toDateString() === today.toDateString();
-                  const dayEvents = events.filter(e => e.day === dn && e.hour === hour);
+                  const dayEvents = safeEvents.filter(e => e.day === dn && e.hour === hour);
                   return (
                     <div key={dn} className={`border-l border-slate-700/40 p-1 ${isToday ? 'bg-amber-500/5' : ''}`}>
-                      {dayEvents.map((ev, ei) => (
+                      {(dayEvents || []).map((ev, ei) => (
                         <Link
                           key={ei}
                           to={`/classes/${ev.cls.id}`}

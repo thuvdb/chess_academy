@@ -25,6 +25,10 @@ export default function Classes() {
   const isStudent = user?.role === 'student';
   const [classTab, setClassTab] = useState<'my' | 'all'>(isStudent ? 'my' : 'all');
 
+  const safeClasses = Array.isArray(classes) ? classes : [];
+  const enrolledClasses = safeClasses.filter(c => c.is_enrolled);
+  const displayedClasses = isStudent && classTab === 'my' ? enrolledClasses : safeClasses;
+
   const canCreate = Boolean(
     user && (user.role === 'super_admin' || user.role === 'admin' || user.role === 'center_admin' || user.role === 'teacher')
   );
@@ -43,7 +47,7 @@ export default function Classes() {
       if (search) params.search = search;
       if (levelFilter) params.level = levelFilter;
       const { data } = await getClasses(params);
-      setClasses(data);
+      setClasses(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Failed to load classes');
     } finally {
@@ -118,13 +122,13 @@ export default function Classes() {
             onClick={() => setClassTab('my')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${classTab === 'my' ? 'bg-amber-500 text-slate-900 font-semibold shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
           >
-            Lớp của tôi ({classes.filter(c => c.is_enrolled).length})
+            Lớp của tôi ({enrolledClasses.length})
           </button>
           <button
             onClick={() => setClassTab('all')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${classTab === 'all' ? 'bg-amber-500 text-slate-900 font-semibold shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
           >
-            Tất cả lớp học ({classes.length})
+            Tất cả lớp học ({safeClasses.length})
           </button>
         </div>
       )}
@@ -166,9 +170,9 @@ export default function Classes() {
       {/* Stats Bar */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
-          { label: isStudent && classTab === 'my' ? 'My Classes' : 'Total Classes', value: (isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).length, icon: BookOpen, color: 'text-blue-400' },
-          { label: 'Active Classes', value: (isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).filter(c => c.is_active).length, icon: BookOpen, color: 'text-green-400' },
-          { label: 'Total Enrolled', value: (isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).reduce((s, c) => s + c.current_students, 0), icon: Users, color: 'text-amber-400' },
+          { label: isStudent && classTab === 'my' ? 'My Classes' : 'Total Classes', value: displayedClasses.length, icon: BookOpen, color: 'text-blue-400' },
+          { label: 'Active Classes', value: displayedClasses.filter(c => c.is_active).length, icon: BookOpen, color: 'text-green-400' },
+          { label: 'Total Enrolled', value: displayedClasses.reduce((s, c) => s + (c.current_students || 0), 0), icon: Users, color: 'text-amber-400' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
             <div className={`${color} p-2 bg-slate-800 rounded-lg`}>
@@ -187,7 +191,7 @@ export default function Classes() {
         <div className="flex items-center justify-center h-48 text-slate-400">
           <RefreshCw className="w-6 h-6 animate-spin mr-3" /> Loading...
         </div>
-      ) : classes.length === 0 ? (
+      ) : displayedClasses.length === 0 ? (
         <div className="text-center py-16 text-slate-500">
           <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No classes found</p>
@@ -207,7 +211,7 @@ export default function Classes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {(isStudent && classTab === 'my' ? classes.filter(c => c.is_enrolled) : classes).map(cls => (
+              {displayedClasses.map(cls => (
                 <tr key={cls.id} className="hover:bg-slate-700/30 transition-colors group">
                   <td className="px-6 py-4">
                     <Link to={`/classes/${cls.id}`} className="text-white font-medium hover:text-amber-400 transition-colors flex items-center gap-2">

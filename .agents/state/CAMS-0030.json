@@ -1,0 +1,41 @@
+{
+  "task_id": "CAMS-0030",
+  "type": "REFACTOR",
+  "state": "DONE",
+  "title": "Translate Sidebar navigation items and user controls to standardized Vietnamese",
+  "specialists_invoked": [
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {
+    "cams-frontend": 0
+  },
+  "assumptions": [
+    "Dashboard -> Tổng quan",
+    "Classes -> Lớp học",
+    "Schedule -> Lịch học",
+    "Puzzle Bank -> Kho bài tập cờ",
+    "AI Scanner -> Quét AI bàn cờ (roles: super_admin, admin, center_admin, teacher)",
+    "Invoices -> Học phí & Hóa đơn",
+    "Fee Plans -> Gói học phí (roles: super_admin, admin, center_admin)",
+    "Tournaments -> Giải đấu",
+    "Members -> Quản lý thành viên (roles: super_admin, admin, center_admin)",
+    "Sign Out -> Đăng xuất",
+    "All icons, routes, and role restrictions strictly preserved."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-17T11:07:00+07:00"
+}

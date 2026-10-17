@@ -1,0 +1,34 @@
+{
+  "task_id": "CAMS-0029",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix Frontend crash in class management (TypeError: r.forEach is not a function) and enable AI Scanner for teachers in Sidebar",
+  "specialists_invoked": [
+    "cams-frontend-dev",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "N/A"
+  },
+  "retries": {
+    "cams-frontend": 0
+  },
+  "assumptions": [
+    "Route /classes/:classId is implemented by StudentList.tsx (acting as ClassDetail).",
+    "schedule_json in ClassItem can be null, empty object, or contain non-array day values which caused times.forEach / times.map to crash.",
+    "API responses for students and classes can be null or undefined, requiring Array.isArray guards and fallback empty arrays.",
+    "Backend scan endpoints already permit 'teacher' in UPLOAD_ROLES and STAFF_ROLES; updating frontend Sidebar.tsx allows teachers to access the feature as requested."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-17T10:55:00+07:00"
+}

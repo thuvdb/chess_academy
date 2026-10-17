@@ -235,7 +235,7 @@ export default function AssignmentDetail() {
   const myProgressMap = useMemo(() => {
     if (!user) return new Map<string, ProgressRecord>();
     const map = new Map<string, ProgressRecord>();
-    progressData
+    (progressData || [])
       .filter((p) => p.student_id === user.id)
       .forEach((p) => {
         const existing = map.get(p.puzzle_id);
@@ -307,7 +307,7 @@ export default function AssignmentDetail() {
       }
     > = {};
 
-    students.forEach((s) => {
+    (students || []).forEach((s) => {
       statsMap[s.student_id] = {
         id: s.student_id,
         name: s.student_name || 'Unknown',
@@ -325,7 +325,7 @@ export default function AssignmentDetail() {
       };
     });
 
-    progressData.forEach((p) => {
+    (progressData || []).forEach((p) => {
       if (!statsMap[p.student_id]) {
         statsMap[p.student_id] = {
           id: p.student_id,
