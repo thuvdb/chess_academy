@@ -52,6 +52,7 @@ Bộ cẩm nang hướng dẫn sử dụng hệ thống chi tiết bằng tiến
 | [teacher-guide.md](./04-guides/teacher-guide.md) | Giáo viên & HLV | Quản lý lớp, thời khóa biểu, hướng dẫn chi tiết AI Scanner, kho bài tập FEN/Stockfish, giao & chấm bài tập |
 | [student-parent-guide.md](./04-guides/student-parent-guide.md) | Học viên & Phụ huynh | Xem lớp học & lịch học, cách làm bài tập (kéo-thả/bấm chọn, hint, deadline), luyện tập tự do & bảng xếp hạng ELO |
 | [admin-guide.md](./04-guides/admin-guide.md) | Quản trị viên Trung tâm | Dashboard thống kê, quản lý thành viên & liên kết Phụ huynh - Học sinh, quản lý lớp học & phân công giáo viên |
+| [huong-dan-quet-ai-ban-co.md](./04-guides/huong-dan-quet-ai-ban-co.md) | Giáo viên & Admin | Chuyên đề hướng dẫn chi tiết từng bước sử dụng tính năng Quét AI bàn cờ (AI Scanner) từ sách cờ PDF |
 
 ---
 
@@ -83,7 +84,8 @@ docs/
 └── 04-guides/         ← Bộ cẩm nang Hướng dẫn sử dụng v1.0
     ├── teacher-guide.md
     ├── student-parent-guide.md
-    └── admin-guide.md
+    ├── admin-guide.md
+    └── huong-dan-quet-ai-ban-co.md
 ```
 
 ---
