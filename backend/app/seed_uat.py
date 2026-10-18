@@ -159,7 +159,7 @@ async def seed_center_and_branch(db) -> tuple[Center, Branch]:
             name=center_name,
             address="Tòa nhà CAMS, Số 123 Đường Cờ Vua, Quận 1, TP. Hồ Chí Minh",
             phone="0901234567",
-            email="contact@cams.test",
+            email="contact@cams.com",
             facebook_page_url="https://facebook.com/camschessacademy",
             subscription_plan=SubscriptionPlan.PREMIUM.value,
         )
@@ -168,7 +168,7 @@ async def seed_center_and_branch(db) -> tuple[Center, Branch]:
         logger.info(f"✓ Tạo mới Center: {center.name} (ID: {center.id})")
     else:
         center.subscription_plan = SubscriptionPlan.PREMIUM.value
-        center.email = "contact@cams.test"
+        center.email = "contact@cams.com"
         center.phone = "0901234567"
         await db.flush()
         logger.info(f"✓ Cập nhật Center hiện có: {center.name} (ID: {center.id})")
@@ -206,7 +206,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
     users_data = [
         # 1. Super Admin
         {
-            "email": "superadmin@cams.test",
+            "email": "superadmin@cams.com",
             "password": "Super@2026!",
             "full_name": "Vũ Tổng Quản",
             "role": UserRole.SUPER_ADMIN.value,
@@ -227,7 +227,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         # 2. Center Admin
         {
-            "email": "admin@cams.test",
+            "email": "admin@cams.com",
             "password": "Admin@2026!",
             "full_name": "Nguyễn Quản Trị",
             "role": UserRole.CENTER_ADMIN.value,
@@ -248,7 +248,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         # 3. Teachers
         {
-            "email": "teacher1@cams.test",
+            "email": "teacher1@cams.com",
             "password": "Teacher@2026!",
             "full_name": "Trần Văn Giáo",
             "role": UserRole.TEACHER.value,
@@ -258,7 +258,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
             "phone": "0911000003",
         },
         {
-            "email": "teacher2@cams.test",
+            "email": "teacher2@cams.com",
             "password": "Teacher@2026!",
             "full_name": "Lê Thị Hoa",
             "role": UserRole.TEACHER.value,
@@ -279,7 +279,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         # 4. Students
         {
-            "email": "student1@cams.test",
+            "email": "student1@cams.com",
             "password": "Student@2026!",
             "full_name": "Phạm Minh Học",
             "role": UserRole.STUDENT.value,
@@ -289,7 +289,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
             "phone": "0911000005",
         },
         {
-            "email": "student2@cams.test",
+            "email": "student2@cams.com",
             "password": "Student@2026!",
             "full_name": "Hoàng Bảo Long",
             "role": UserRole.STUDENT.value,
@@ -299,7 +299,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
             "phone": "0911000006",
         },
         {
-            "email": "student3@cams.test",
+            "email": "student3@cams.com",
             "password": "Student@2026!",
             "full_name": "Võ Thị Mai",
             "role": UserRole.STUDENT.value,
@@ -320,7 +320,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         # 5. Parent
         {
-            "email": "parent1@cams.test",
+            "email": "parent1@cams.com",
             "password": "Parent@2026!",
             "full_name": "Phạm Văn Cha",
             "role": UserRole.PARENT.value,
@@ -397,11 +397,11 @@ async def seed_classes_and_enrollments(
     """Bước 5: Tạo 2 lớp học mẫu và ghi danh học sinh."""
     logger.info("--- BƯỚC 5: Khởi tạo Lớp học & Ghi danh ---")
 
-    teacher1 = users["teacher1@cams.test"]
-    teacher2 = users["teacher2@cams.test"]
-    student1 = users["student1@cams.test"]
-    student2 = users["student2@cams.test"]
-    student3 = users["student3@cams.test"]
+    teacher1 = users["teacher1@cams.com"]
+    teacher2 = users["teacher2@cams.com"]
+    student1 = users["student1@cams.com"]
+    student2 = users["student2@cams.com"]
+    student3 = users["student3@cams.com"]
 
     # 1. Lớp Cờ Vua Cơ Bản K2026
     class_1_name = "Cờ Vua Cơ Bản K2026"
@@ -634,8 +634,8 @@ async def main() -> None:
             users = await seed_users(db, center, branch)
 
             # Bước 4: Parent - Student Link
-            parent1 = users.get("parent1@cams.test")
-            student1 = users.get("student1@cams.test")
+            parent1 = users.get("parent1@cams.com")
+            student1 = users.get("student1@cams.com")
             if parent1 and student1:
                 await seed_parent_student_link(db, parent1, student1)
 
@@ -643,7 +643,7 @@ async def main() -> None:
             await seed_classes_and_enrollments(db, center, branch, users)
 
             # Bước 6: Sample Puzzles
-            teacher1 = users.get("teacher1@cams.test")
+            teacher1 = users.get("teacher1@cams.com")
             if teacher1:
                 await seed_sample_puzzles(db, center, teacher1)
 
