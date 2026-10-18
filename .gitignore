@@ -10,6 +10,8 @@ celerybeat-schedule*
 node_modules/
 dist/
 .expo/
+playwright-report/
+test-results/
 
 # Bi mat va cau hinh moi truong
 .env

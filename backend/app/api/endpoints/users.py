@@ -48,6 +48,9 @@ async def update_me(
         if pwd:
             current_user.password_hash = hash_password(pwd)
 
+    if "username" in update_data and not update_data["username"]:
+        update_data["username"] = None
+
     for field, value in update_data.items():
         setattr(current_user, field, value)
 
@@ -499,6 +502,7 @@ async def unlink_parent_student(
 
 
 @router.post("/avatar")
+@router.post("/me/avatar")
 async def upload_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),

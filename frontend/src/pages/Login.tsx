@@ -6,7 +6,12 @@ import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('cams_remember_me') === 'true';
+  });
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem('cams_remember_email') || '';
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,6 +31,15 @@ export default function Login() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
       setTokens(tokenRes.data.access_token, tokenRes.data.refresh_token);
+
+      // Save or clear remember me credentials in localStorage
+      if (rememberMe) {
+        localStorage.setItem('cams_remember_me', 'true');
+        localStorage.setItem('cams_remember_email', email);
+      } else {
+        localStorage.removeItem('cams_remember_me');
+        localStorage.removeItem('cams_remember_email');
+      }
       
       // 2. Fetch user profile
       const userRes = await api.get('/auth/me');
@@ -120,6 +134,23 @@ export default function Login() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between ml-1">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  id="remember-me"
+                  name="remember-me"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border border-white/20 bg-black/50 text-blue-600 accent-blue-600 focus:ring-blue-500/50 focus:ring-offset-0 cursor-pointer transition-colors"
+                />
+                <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
+                  Nhớ mật khẩu (Remember me)
+                </span>
+              </label>
             </div>
 
             <button

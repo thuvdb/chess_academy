@@ -81,7 +81,9 @@ const Profile = () => {
     setUploading(true);
     try {
       // For avatar upload, we use multipart/form-data
-      const res = await api.post('/users/avatar', formData);
+      const res = await api.post('/users/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setValue('avatar_url', res.data.avatar_url);
       toast.success('Avatar uploaded successfully! Make sure to save profile.');
     } catch (error) {

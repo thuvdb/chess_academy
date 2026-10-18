@@ -127,8 +127,10 @@ export default function Sidebar({
 
         {/* Sliding Drawer */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${
-            isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+          className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col shadow-2xl transition-all duration-300 ease-in-out ${
+            isMobileOpen
+              ? 'translate-x-0 opacity-100 visible'
+              : '-translate-x-full opacity-0 invisible pointer-events-none'
           }`}
           aria-label="Mobile Navigation"
         >

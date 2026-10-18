@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Chessboard } from 'react-chessboard';
-import { Upload, Search, CheckCircle, XCircle, AlertTriangle, FileText, Loader2, RefreshCw, Eye, Trash2, BookOpen, Play } from 'lucide-react';
+import { Upload, Search, CheckCircle, XCircle, AlertTriangle, FileText, Loader2, RefreshCw, Eye, Trash2, BookOpen, Play, ZoomIn, ZoomOut, Maximize2, X, RotateCcw } from 'lucide-react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -71,6 +71,30 @@ export default function Scanner() {
   const [savingApproved, setSavingApproved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Zoom Modal State ────────────────────────────────────
+  const [zoomModal, setZoomModal] = useState<{
+    imageUrl: string;
+    title: string;
+    fen: string | null;
+    pageNumber: number;
+    boardIndex: number;
+    confidence: number | null;
+  } | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
+
+  // Close zoom modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setZoomModal(null);
+      }
+    };
+    if (zoomModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomModal]);
 
   // ── Load Jobs ──────────────────────────────────────────
   const fetchJobs = useCallback(async () => {
@@ -418,27 +442,63 @@ export default function Scanner() {
                         {/* Board Visuals: Crop Image + Virtual Chessboard side-by-side */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 bg-slate-950/80 border-b border-slate-800">
                           {/* Col 1: Cropped PDF Image */}
-                          <div className="aspect-square bg-slate-900 rounded-lg flex items-center justify-center relative overflow-hidden">
+                          <div className="aspect-square bg-slate-900 rounded-lg flex items-center justify-center relative overflow-hidden group">
                             {result.board_image_url ? (
                               <img
                                 src={result.board_image_url}
                                 alt={`Board page ${result.page_number}`}
-                                className="w-full h-full object-contain"
+                                className="w-full h-full object-contain cursor-pointer hover:opacity-95 transition-opacity"
+                                onClick={() => {
+                                  setZoomScale(1);
+                                  setZoomModal({
+                                    imageUrl: result.board_image_url!,
+                                    title: `Trang ${result.page_number} — Bàn cờ #${result.board_index}`,
+                                    fen,
+                                    pageNumber: result.page_number,
+                                    boardIndex: result.board_index,
+                                    confidence: result.confidence_board,
+                                  });
+                                }}
                               />
                             ) : (
                               <div className="text-slate-600 text-xs">No image</div>
                             )}
-                            <div className="absolute top-2 left-2">
+                            <div className="absolute top-2 left-2 pointer-events-none">
                               <span className="bg-slate-900/80 text-slate-300 text-[10px] px-1.5 py-0.5 rounded">
                                 P{result.page_number} / B{result.board_index}
                               </span>
                             </div>
                             {result.confidence_board != null && (
-                              <div className="absolute top-2 right-2">
+                              <div className="absolute top-2 right-2 pointer-events-none">
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${result.confidence_board >= 0.90 ? 'bg-green-900/80 text-green-300' : result.confidence_board >= 0.70 ? 'bg-amber-900/80 text-amber-300' : 'bg-red-900/80 text-red-300'}`}>
                                   {(result.confidence_board * 100).toFixed(0)}%
                                 </span>
                               </div>
+                            )}
+
+                            {/* Nút phóng to ảnh ở góc ảnh gốc */}
+                            {result.board_image_url && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setZoomScale(1);
+                                  setZoomModal({
+                                    imageUrl: result.board_image_url!,
+                                    title: `Trang ${result.page_number} — Bàn cờ #${result.board_index}`,
+                                    fen,
+                                    pageNumber: result.page_number,
+                                    boardIndex: result.board_index,
+                                    confidence: result.confidence_board,
+                                  });
+                                }}
+                                className="absolute bottom-2 right-2 p-1.5 bg-slate-900/85 hover:bg-purple-600 text-slate-200 hover:text-white rounded-lg border border-white/10 shadow-md backdrop-blur-xs transition-all flex items-center gap-1 text-[11px]"
+                                title="Phóng to ảnh để so sánh chi tiết"
+                                aria-label="Phóng to ảnh bàn cờ"
+                              >
+                                <ZoomIn className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline text-[10px] font-medium pr-0.5">Phóng to</span>
+                              </button>
                             )}
                           </div>
 
@@ -583,6 +643,152 @@ export default function Scanner() {
           )}
         </div>
       </div>
+
+      {/* ── Zoom Modal ─────────────────────────────────────── */}
+      {zoomModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-sm"
+          onClick={() => setZoomModal(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Phóng to ảnh bàn cờ"
+        >
+          <div
+            className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/70">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl">
+                  <Maximize2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    {zoomModal.title}
+                    {zoomModal.confidence != null && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${zoomModal.confidence >= 0.90 ? 'bg-green-900/80 text-green-300' : 'bg-amber-900/80 text-amber-300'}`}>
+                        Độ chính xác: {(zoomModal.confidence * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-400">So sánh chi tiết ảnh gốc trích xuất từ PDF và bàn cờ số hóa</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Image Zoom Scale Controls */}
+                <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700/80 rounded-xl p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(s => Math.max(parseFloat((s - 0.25).toFixed(2)), 0.5))}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/60 transition"
+                    title="Thu nhỏ ảnh (-)"
+                    aria-label="Thu nhỏ ảnh"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="px-2 font-mono text-slate-300 select-none min-w-[3.5rem] text-center text-[11px]">
+                    {Math.round(zoomScale * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(s => Math.min(parseFloat((s + 0.25).toFixed(2)), 3.5))}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/60 transition"
+                    title="Phóng to ảnh (+)"
+                    aria-label="Phóng to ảnh"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomScale(1)}
+                    className="p-1 text-slate-400 hover:text-purple-400 rounded-lg hover:bg-slate-700/60 transition"
+                    title="Đặt lại tỉ lệ (100%)"
+                    aria-label="Đặt lại tỉ lệ"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setZoomModal(null)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                  title="Đóng (Esc)"
+                  aria-label="Đóng phóng to ảnh"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Split view comparing Original and Digitized Board */}
+            <div className="p-4 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/40">
+              {/* Left: Original Crop with interactive Zoom/Pan */}
+              <div className="flex flex-col bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-inner">
+                <div className="px-3 py-2 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between text-xs text-slate-300 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                    Ảnh gốc trích xuất từ PDF
+                  </span>
+                  <span className="text-slate-500 text-[11px]">Cuộn / kéo để di chuyển ảnh</span>
+                </div>
+                <div className="flex-1 min-h-[350px] max-h-[520px] overflow-auto flex items-center justify-center p-4 bg-slate-950 relative select-none">
+                  <div
+                    style={{
+                      transform: `scale(${zoomScale})`,
+                      transformOrigin: 'center center',
+                      transition: 'transform 0.15s ease-out'
+                    }}
+                    className="flex items-center justify-center"
+                  >
+                    <img
+                      src={zoomModal.imageUrl}
+                      alt={zoomModal.title}
+                      className="max-w-full max-h-[460px] object-contain rounded-md shadow-2xl pointer-events-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Digitized Virtual Chessboard */}
+              <div className="flex flex-col bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-inner">
+                <div className="px-3 py-2 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between text-xs text-slate-300 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                    Bàn cờ số hóa (Digital Board)
+                  </span>
+                  {zoomModal.fen && (
+                    <span className="text-purple-400 text-[11px] font-mono truncate max-w-[200px]" title={zoomModal.fen}>
+                      {zoomModal.fen}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-h-[350px] max-h-[520px] flex items-center justify-center p-4 bg-slate-950">
+                  {zoomModal.fen ? (
+                    <div className="w-full max-w-[360px] aspect-square">
+                      <Chessboard
+                        options={{
+                          id: 'zoom-modal-board',
+                          position: zoomModal.fen,
+                          allowDragging: false,
+                          boardOrientation: (zoomModal.fen.split(' ')[1] === 'b') ? 'black' : 'white',
+                          showNotation: true,
+                          boardStyle: { borderRadius: '8px' },
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-slate-500 text-sm">Chưa có FEN số hóa</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
