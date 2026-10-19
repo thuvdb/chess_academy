@@ -1,0 +1,10 @@
+# Quy tắc dự án ProjectAI Chess
+## Cấu trúc thư mục
+- Frontend: React + TypeScript tại `frontend/src/` (Pages: `Scanner.tsx`, `Login.tsx`, `Profile.tsx`; Components: `Sidebar.tsx`).
+- E2E Testing: Playwright tại `frontend/e2e/` và cấu hình tại `frontend/playwright.config.ts`.
+- Backend: Python API tại `backend/app/api/endpoints/` (ví dụ: `users.py`).
+
+## Quy tắc tối ưu Token & Phản hồi
+- Trả lời ngắn gọn bằng tiếng Việt, đi thẳng vào code và giải pháp.
+- Không đọc các thư mục báo cáo test hoặc file lock.
+- Khi commit code, luôn dùng chuẩn Conventional Commits tiếng Việt không dấu (ví dụ: `feat(ui): ...`, `fix(api): ...`) và báo cáo ngắn gọn gồm: Commit hash, Thông điệp, Các tệp đã đẩy lên.
