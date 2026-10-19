@@ -1,0 +1,36 @@
+{
+  "task_id": "CAMS-0032",
+  "type": "FEATURE",
+  "state": "IN_PROGRESS",
+  "title": "UI Enhancements (Mobile Drawer, AI Scanner Zoom, Remember Me), Playwright E2E Suite & Quota Optimization",
+  "specialists_invoked": [
+    "cams-frontend",
+    "cams-qa",
+    "cams-devops"
+  ],
+  "gates": {
+    "qa": "PENDING",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Collapsible sidebar on desktop and sliding responsive drawer on mobile devices integrated in AppLayout and Sidebar.",
+    "Modal zoom for scanned chessboard images added in Scanner.tsx with keyboard and click-to-close support.",
+    "Remember Me checkbox integrated in Login.tsx with persistent token caching.",
+    "Playwright E2E test suite initialized in frontend/e2e/ with admin, teacher, student/parent, and auth-profile specs.",
+    "Antigravity quota optimization configured via .agyignore, .agyrules, and slash commands (/ship, /plan-argon, /fix-e2e).",
+    "Temporary test file test.txt cleaned up from git tracking."
+  ],
+  "handoff": {
+    "triggered_at": "2026-10-19T20:45:00+07:00",
+    "reason": "manual",
+    "resume_prompt": "Resume CAMS task CAMS-0032. Run or fix E2E tests using /fix-e2e, or proceed with Next Phase (Mobile App or Celery Notifications/Payments).",
+    "git_state": {
+      "branch": "main",
+      "last_commit": "ddd9110 chore(config): them file cau hinh toi uu quota va lenh tat agy",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-19T20:45:00+07:00"
+}
