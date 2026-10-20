@@ -1,0 +1,22 @@
+# ==============================================================================
+# CAMS — CẤU HÌNH GHI ĐÈ DÀNH RIÊNG CHO MÁY LOCAL DEV (DOCKER COMPOSE OVERRIDE)
+# ==============================================================================
+# Hướng dẫn sử dụng:
+# 1. Sao chép file này thành docker-compose.override.yml:
+#      cp docker-compose.override.yml.example docker-compose.override.yml
+# 2. Docker Compose mặc định tự động gộp file này vào docker-compose.yml khi chạy "docker compose up".
+# 3. Mục đích:
+#    - Mở cổng 8000 ra máy host để lập trình viên test trực tiếp Swagger Docs (http://localhost:8000/docs) hoặc Postman.
+#    - Bật cờ --reload để tự động nạp lại code Python khi chỉnh sửa file trong thư mục backend/.
+#
+# CẢNH BÁO BẢO MẬT:
+# - TUYỆT ĐỐI KHÔNG đưa file này lên máy chủ UAT hoặc Production.
+# - Trên UAT/Production, Backend chỉ giao tiếp nội bộ với Nginx, không mở cổng 8000 ra ngoài Internet
+#   nhằm tránh nguy cơ giả mạo IP client qua header X-Forwarded-*.
+# ==============================================================================
+
+services:
+  backend:
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --reload

@@ -45,3 +45,8 @@ Thumbs.db
 # Bổ sung chặn file upload thử nghiệm ở local
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# Docker Compose Local Override (chỉ dùng ở máy dev nội bộ)
+docker-compose.override.yml
+docker-compose.*.override.yml
+!docker-compose.override.yml.example

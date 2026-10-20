@@ -1,8 +1,8 @@
 # BÁO CÁO RÀ SOÁT & TÁCH CẤU HÌNH MÔI TRƯỜNG (CAMS - CHESS ACADEMY)
 
-> **Mã công việc:** CAMS-0033, CAMS-0034, CAMS-0035  
+> **Mã công việc:** CAMS-0033, CAMS-0034, CAMS-0035, CAMS-0036, CAMS-0037, CAMS-0038  
 > **Thời gian thực hiện:** 20/10/2026  
-> **Phạm vi:** Backend (FastAPI), Background Worker (Celery), Frontend (React/Vite), Docker Compose, Quản trị biến môi trường  
+> **Phạm vi:** Backend (FastAPI), Background Worker (Celery), Frontend (React/Vite), Docker Compose, Quản trị biến môi trường, Bảo mật hạ tầng mạng  
 
 ---
 
@@ -87,10 +87,23 @@ Toàn bộ các giá trị cấu hình đã được quy chuẩn hóa trong file
 ### Bước 3: Docker & Mẫu Cấu Hình (`CAMS-0035`) — Commit `ac850bb`
 - Chuẩn hóa `docker-compose.yml`:
   - Khai báo thông tin Postgres 1 chỗ, biến môi trường kế thừa từ `.env`.
-  - Cổng publish `8000` và `3000` cho phép ghi đè qua `BACKEND_PORT` và `FRONTEND_PORT`.
   - Cung cấp build args cho frontend (`VITE_API_BASE_URL`, `VITE_WS_BASE_URL`, v.v.).
 - Thêm `.dockerignore` tại thư mục gốc và `backend/.dockerignore` nhằm ngăn chặn rò rỉ file `.env` vào Docker image.
 - Soạn thảo `.env.example` và `backend/.env.example` với hướng dẫn tiếng Việt chi tiết từng biến, không chứa secret thật.
+
+### Bước 4: Test Scripts & Kiểm Thử E2E (`CAMS-0037`) — Commit `ddf42e4`
+- Rà soát và cập nhật toàn bộ test/maintenance scripts (`qa_payment_e2e.py`, `qa_tournament_e2e.py`, `test_live_game.py`, `fetch_solutions.py`, `test_api.py`, `test_orm.py`, `cleanup_scans.py`) sang đọc biến môi trường từ `settings.API_PUBLIC_URL` và `API_BASE_URL`.
+
+### Bước 5: Siết Chặt An Ninh Mạng Container (`CAMS-0038`)
+- **Đóng cổng Backend (8000) trên môi trường UAT/Production:**
+  - Loại bỏ hoàn toàn khối `ports: - 8000:8000` của `backend` trong `docker-compose.yml` chính.
+  - Backend API chỉ lắng nghe trên mạng nội bộ Docker bridge network, mọi request bên ngoài bắt buộc phải đi qua Nginx frontend (Reverse Proxy cổng 3000).
+  - Khắc phục triệt để nguy cơ giả mạo IP/headers (`X-Forwarded-For`, `X-Forwarded-Proto`) khi uvicorn dùng cờ `--forwarded-allow-ips='*'`.
+- **Loại bỏ `--reload` khỏi lệnh khởi chạy production:**
+  - Uvicorn chạy ở chế độ chuẩn, không tốn tài nguyên quét ổ đĩa (watchfiles).
+- **Tách cấu hình Local Dev sang `docker-compose.override.yml`:**
+  - Tạo `docker-compose.override.yml.example` làm mẫu và thêm `docker-compose.override.yml` vào `.gitignore`.
+  - Khi lập trình ở máy local, Docker Compose tự động nạp file override để mở cổng 8000 và bật `--reload` mà không ảnh hưởng tới UAT/VPS.
 
 ---
 
@@ -115,25 +128,39 @@ Toàn bộ các giá trị cấu hình đã được quy chuẩn hóa trong file
 
 ## 5. HƯỚNG DẪN THIẾT LẬP KHI DEPLOY LÊN VPS
 
-Khi triển khai code mới lên máy chủ VPS (UAT hoặc Production):
+### 5.1. Triển khai môi trường UAT (IP: 129.153.55.144)
+Trên VPS UAT, tạo file `.env`:
+```env
+APP_ENV=uat
+DEBUG=true
+FRONTEND_PORT=3000
 
-1. **Tạo file cấu hình `.env`:**
-   ```bash
-   cp .env.example .env
-   nano .env
-   ```
-2. **Cập nhật các biến quan trọng:**
-   ```env
-   APP_ENV=production
-   DEBUG=false
-   JWT_SECRET_KEY=<tạo bằng: openssl rand -hex 32>
-   POSTGRES_PASSWORD=<tạo mật khẩu ngẫu nhiên mạnh>
-   REDIS_PASSWORD=<tạo mật khẩu hex ngẫu nhiên>
-   BACKEND_CORS_ORIGINS=https://cams-app.duckdns.org,http://cams-app.duckdns.org
-   API_PUBLIC_URL=https://cams-api.duckdns.org
-   ```
-3. **Build và khởi động lại dịch vụ:**
-   ```bash
-   docker compose down
-   docker compose up -d --build
-   ```
+# Khóa bí mật & Mật khẩu
+JWT_SECRET_KEY=CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32
+POSTGRES_PASSWORD=CHANGE_ME_SECURE_POSTGRES_PASSWORD
+REDIS_PASSWORD=CHANGE_ME_SECURE_REDIS_PASSWORD_HEX
+
+# Cấu hình URL công khai và CORS (Toàn bộ người dùng truy cập qua Nginx port 3000)
+API_PUBLIC_URL=http://129.153.55.144:3000
+BACKEND_CORS_ORIGINS=http://129.153.55.144:3000
+```
+> **Lưu ý:** Không copy file `docker-compose.override.yml` lên VPS UAT. VPS chỉ chạy file `docker-compose.yml` gốc, đảm bảo cổng 8000 được bảo vệ an toàn bên trong Docker network.
+
+Khởi động hệ thống trên UAT:
+```bash
+docker compose down
+docker compose up -d --build
+```
+Kiểm tra container: `docker compose ps` — Cổng 8000 của backend sẽ hiển thị `8000/tcp` (nội bộ, không có `0.0.0.0:8000->8000/tcp`), chỉ có frontend mở `0.0.0.0:3000->3000/tcp`.
+
+### 5.2. Triển khai môi trường Production (Tên miền chính thức)
+```env
+APP_ENV=production
+DEBUG=false
+LOG_LEVEL=INFO
+JWT_SECRET_KEY=<tạo bằng: openssl rand -hex 32>
+POSTGRES_PASSWORD=<mật khẩu mạnh ngẫu nhiên>
+REDIS_PASSWORD=<mật khẩu hex ngẫu nhiên>
+BACKEND_CORS_ORIGINS=https://cams.academy.vn
+API_PUBLIC_URL=https://cams.academy.vn
+```

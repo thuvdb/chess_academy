@@ -53,14 +53,14 @@ services:
     container_name: cams_backend
     restart: always
     environment: *backend-env
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
+    # No published ports in base compose: internal network only (nginx proxies /api, /ws, /static).
+    # For local debug with port 8000 and --reload, see docker-compose.override.yml.
     volumes:
       - ./backend:/app
     depends_on:
       - db
       - redis
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'
 
   worker:
     build:
