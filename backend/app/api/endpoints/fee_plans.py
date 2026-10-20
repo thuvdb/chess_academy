@@ -12,7 +12,8 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/", response_model=FeePlanResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=FeePlanResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=FeePlanResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_fee_plan(
     fee_plan_in: FeePlanCreate,
     db: AsyncSession = Depends(get_db),

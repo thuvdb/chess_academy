@@ -25,7 +25,8 @@ _EMAIL_VISIBLE_ROLES = {"super_admin", "center_admin", "admin", "teacher"}
 
 # ==================== Class Endpoints ====================
 
-@router.get("/", response_model=list[ClassRead])
+@router.get("", response_model=list[ClassRead])
+@router.get("/", response_model=list[ClassRead], include_in_schema=False)
 async def list_classes(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -70,7 +71,8 @@ async def get_class(
     return cls
 
 
-@router.post("/", response_model=ClassRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ClassRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ClassRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_class(
     data: ClassCreate,
     db: AsyncSession = Depends(get_db),

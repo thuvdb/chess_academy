@@ -14,7 +14,8 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_invoice(
     invoice_in: InvoiceCreate,
     db: AsyncSession = Depends(get_db),

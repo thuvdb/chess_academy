@@ -20,7 +20,8 @@ from app.services.tournament_service import TournamentService
 router = APIRouter()
 
 
-@router.get("/", response_model=List[TournamentRead])
+@router.get("", response_model=List[TournamentRead])
+@router.get("/", response_model=List[TournamentRead], include_in_schema=False)
 async def list_tournaments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -29,7 +30,8 @@ async def list_tournaments(
     return result.scalars().all()
 
 
-@router.post("/", response_model=TournamentRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TournamentRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=TournamentRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_tournament(
     req: TournamentCreate,
     db: AsyncSession = Depends(get_db),

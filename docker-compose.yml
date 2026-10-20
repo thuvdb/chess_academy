@@ -9,7 +9,7 @@ x-backend-env: &backend-env
   CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/1
   JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
   DEBUG: ${DEBUG:-false}
-  CORS_ORIGINS: '["https://cams-app.duckdns.org"]' 
+  CORS_ORIGINS: '["https://cams-app.duckdns.org","http://cams-app.duckdns.org","http://129.153.55.144:3000","http://129.153.55.144","http://localhost:3000","http://localhost:5173"]' 
   API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8000}
 
 services:
@@ -49,7 +49,7 @@ services:
     depends_on:
       - db
       - redis
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --reload
 
   worker:
     build:
