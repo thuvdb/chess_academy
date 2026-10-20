@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+node_modules
+dist
+storage/scans/*
+!storage/scans/.gitkeep
+uploads/*
+!uploads/.gitkeep
+playwright-report
+test-results

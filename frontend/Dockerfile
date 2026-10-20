@@ -10,9 +10,19 @@ RUN npm ci || npm install
 # Copy application source
 COPY . .
 
-# Build production bundle
+# Build production bundle args and environment
+ARG VITE_API_BASE_URL=/api
+ARG VITE_WS_BASE_URL=
 ARG VITE_API_URL=/api
+ARG VITE_DEFAULT_TIMEZONE=Asia/Ho_Chi_Minh
+ARG VITE_PAGE_SIZE=20
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_DEFAULT_TIMEZONE=$VITE_DEFAULT_TIMEZONE
+ENV VITE_PAGE_SIZE=$VITE_PAGE_SIZE
+
 RUN npm run build
 
 # Stage 2: Production Nginx server
