@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../lib/api';
+import { resolveMediaUrl } from '../config';
 import {
   Search,
   Users,
@@ -336,7 +337,7 @@ const Members = () => {
                       <div className="flex items-center gap-3">
                         {member.avatar_url ? (
                           <img
-                            src={member.avatar_url}
+                            src={resolveMediaUrl(member.avatar_url)}
                             alt="Avatar"
                             className="w-9 h-9 rounded-full object-cover border border-slate-700"
                           />

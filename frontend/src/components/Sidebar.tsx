@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { resolveMediaUrl } from '../config';
 import {
   GraduationCap,
   LayoutDashboard,
@@ -194,7 +195,7 @@ export default function Sidebar({
             >
               <div className="w-8 h-8 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
                 {user?.avatar_url ? (
-                  <img src={user.avatar_url} className="w-8 h-8 rounded-full object-cover" alt="avatar" />
+                  <img src={resolveMediaUrl(user.avatar_url)} className="w-8 h-8 rounded-full object-cover" alt="avatar" />
                 ) : (
                   user?.full_name?.charAt(0)?.toUpperCase() ?? 'U'
                 )}
@@ -337,7 +338,7 @@ export default function Sidebar({
                 className="w-10 h-10 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:ring-2 hover:ring-amber-400 transition-all shadow-sm shrink-0"
               >
                 {user?.avatar_url ? (
-                  <img src={user.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="avatar" />
+                  <img src={resolveMediaUrl(user.avatar_url)} className="w-10 h-10 rounded-full object-cover" alt="avatar" />
                 ) : (
                   user?.full_name?.charAt(0)?.toUpperCase() ?? 'U'
                 )}
@@ -361,7 +362,7 @@ export default function Sidebar({
               >
                 <div className="w-8 h-8 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} className="w-8 h-8 rounded-full object-cover" alt="avatar" />
+                    <img src={resolveMediaUrl(user.avatar_url)} className="w-8 h-8 rounded-full object-cover" alt="avatar" />
                   ) : (
                     user?.full_name?.charAt(0)?.toUpperCase() ?? 'U'
                   )}

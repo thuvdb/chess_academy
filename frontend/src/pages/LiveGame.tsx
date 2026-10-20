@@ -5,6 +5,7 @@ import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import toast from 'react-hot-toast';
+import { API_BASE_URL, getGameWebSocketUrl } from '../config';
 
 interface GameInfo {
   white_player_id: string;
@@ -60,8 +61,7 @@ export default function LiveGame() {
   // ---- Fetch game pairing ----
   useEffect(() => {
     if (!id || !gameId || !token) { setReady(true); return; }
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-    fetch(`${apiUrl}/tournaments/${id}/games`, {
+    fetch(`${API_BASE_URL}/tournaments/${id}/games`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
@@ -83,11 +83,7 @@ export default function LiveGame() {
   // ---- WebSocket ----
   useEffect(() => {
     if (!gameId || !token) return;
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-    const wsBase = apiUrl.startsWith('http')
-      ? apiUrl.replace(/^http/, 'ws').replace(/\/api\/?$/, '')
-      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${apiUrl.replace(/\/api\/?$/, '')}`;
-    const wsUrl = `${wsBase}/ws/game/${gameId}?token=${token}`;
+    const wsUrl = getGameWebSocketUrl(gameId, token);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 

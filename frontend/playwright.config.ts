@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Đọc biến môi trường BASE_URL, mặc định là http://localhost:3000.
- * Có thể ghi đè bằng http://129.153.55.144:3000 để chạy test trực tiếp trên VPS UAT.
+ * Có thể ghi đè bằng BASE_URL (ví dụ: https://cams-app.duckdns.org) để chạy test trực tiếp trên VPS UAT.
  */
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 

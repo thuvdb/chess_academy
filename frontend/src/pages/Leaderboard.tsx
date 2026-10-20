@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getLeaderboard, type LeaderboardUser } from '../lib/puzzleApi';
+import { resolveMediaUrl } from '../config';
 
 export default function Leaderboard() {
   const [users, setUsers] = useState<LeaderboardUser[]>([]);
@@ -99,7 +100,7 @@ export default function Leaderboard() {
                 <div className="col-span-6 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white border border-slate-600 shrink-0">
                     {user.avatar_url ? (
-                      <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                      <img src={resolveMediaUrl(user.avatar_url)} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
                       user.full_name.charAt(0).toUpperCase()
                     )}

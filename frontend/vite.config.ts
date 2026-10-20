@@ -14,6 +14,21 @@ export default defineConfig({
     hmr: {
       clientPort: 3000,
     },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_BACKEND_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: process.env.VITE_BACKEND_TARGET || 'http://localhost:8000',
+        ws: true,
+        changeOrigin: true,
+      },
+      '/static': {
+        target: process.env.VITE_BACKEND_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     host: true,

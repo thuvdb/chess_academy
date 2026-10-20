@@ -5,6 +5,7 @@ import { Upload, Search, CheckCircle, XCircle, AlertTriangle, FileText, Loader2,
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
+import { DEFAULT_PAGE_SIZE } from '../config';
 
 // ── Types ──────────────────────────────────────────────────
 interface ScanJob {
@@ -72,7 +73,7 @@ export default function Scanner() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'needs_review'>('all');
   const [pageSearch, setPageSearch] = useState('');
-  const pageSize = 20;
+  const pageSize = DEFAULT_PAGE_SIZE;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

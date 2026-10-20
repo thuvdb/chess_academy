@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import api from '../lib/api';
 import { Camera, Save, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { useRef } from 'react';
+import { DEFAULT_TIMEZONE, resolveMediaUrl } from '../config';
 
 interface ProfileForm {
   full_name: string;
@@ -25,7 +25,10 @@ const Profile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { register, handleSubmit, reset, setValue, watch } = useForm<ProfileForm>();
-  const currentAvatar = watch('avatar_url') || user?.avatar_url || 'https://ui-avatars.com/api/?name=' + (user?.full_name || 'User') + '&background=random';
+  const rawAvatar = watch('avatar_url') || user?.avatar_url;
+  const currentAvatar = rawAvatar
+    ? resolveMediaUrl(rawAvatar)
+    : 'https://ui-avatars.com/api/?name=' + (user?.full_name || 'User') + '&background=random';
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -39,7 +42,7 @@ const Profile = () => {
           location: data.location || '',
           country: data.country || 'Vietnam',
           language: data.language || 'Vietnamese',
-          timezone: data.timezone || 'Asia/Ho_Chi_Minh',
+          timezone: data.timezone || DEFAULT_TIMEZONE,
           avatar_url: data.avatar_url || '',
         });
       } catch (error) {
