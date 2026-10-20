@@ -103,6 +103,7 @@ class Settings(BaseSettings):
     STOCKFISH_PATH: str = "/usr/games/stockfish"
     STOCKFISH_DEPTH: int = 15
     YOLO_MODEL_PATH: str = "models/chess_yolov8s.pt"
+    GEMINI_API_KEY: str = ""
 
     # --- Seed & Defaults ---
     SEED_DEFAULT_PASSWORD: str = "Cams@2026!"
