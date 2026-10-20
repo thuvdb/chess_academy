@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.permissions import (
     Role,
@@ -512,13 +513,14 @@ async def upload_avatar(
 
     ext = file.filename.split(".")[-1]
     filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
-    os.makedirs("uploads/avatars", exist_ok=True)
-    file_path = os.path.join("uploads/avatars", filename)
+    avatar_dir = os.path.join(settings.UPLOAD_DIR, "avatars")
+    os.makedirs(avatar_dir, exist_ok=True)
+    file_path = os.path.join(avatar_dir, filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    base_url = "http://localhost:8000"
+    base_url = settings.API_PUBLIC_URL.rstrip("/")
     avatar_url = f"{base_url}/static/avatars/{filename}"
     return {"avatar_url": avatar_url}
 

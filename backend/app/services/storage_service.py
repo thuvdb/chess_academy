@@ -21,7 +21,7 @@ SCAN_STORAGE_PATH = Path(os.getenv("SCAN_STORAGE_PATH", str(DEFAULT_STORAGE)))
 SCAN_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 # Base URL for local files
-STORAGE_BASE_URL = os.getenv("STORAGE_BASE_URL", "http://localhost:8000/scans")
+STORAGE_BASE_URL = os.getenv("STORAGE_BASE_URL", f"{settings.API_PUBLIC_URL.rstrip('/')}/scans")
 
 
 def _safe_local_path(relative_path: str) -> Path:

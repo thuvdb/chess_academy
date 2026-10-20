@@ -18,13 +18,21 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from app.core.config import settings
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────
 CHESS_LABELS = {"K", "Q", "R", "B", "N", "P", "k", "q", "r", "b", "n", "p", "empty"}
-MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "chess_yolov8s.pt"
+
+
+def get_yolo_model_path() -> Path:
+    p = Path(settings.YOLO_MODEL_PATH)
+    if not p.is_absolute():
+        p = Path(__file__).resolve().parent.parent.parent / p
+    return p
 
 # Detector label -> FEN letter (supports wP/bK, white-king/black-pawn, and raw FEN letters)
 _COLOR_WORDS = {"white": True, "black": False, "w": True, "b": False}
@@ -56,13 +64,14 @@ STD_THRESHOLD = 35              # Pixel std > this -> likely piece present
 
 def _load_yolo_model():
     """Load YOLOv8 model only if it is actually trained for chess pieces."""
-    if not MODEL_PATH.exists():
-        logger.info("YOLOv8 model not found at %s - using CV heuristic", MODEL_PATH)
+    model_path = get_yolo_model_path()
+    if not model_path.exists():
+        logger.info("YOLOv8 model not found at %s - using CV heuristic", model_path)
         return None
 
     try:
         from ultralytics import YOLO
-        model = YOLO(str(MODEL_PATH))
+        model = YOLO(str(model_path))
 
         # Validate model labels to ensure it is a chess model, not ImageNet etc.
         names = model.names if hasattr(model, "names") else {}
@@ -80,11 +89,11 @@ def _load_yolo_model():
                 "Model at %s is NOT a chess piece model (labels: %s...). "
                 "Falling back to CV heuristic. Replace chess_yolov8.pt with a "
                 "properly trained chess piece detection model.",
-                MODEL_PATH, list(names.values())[:5]
+                model_path, list(names.values())[:5]
             )
             return None
 
-        logger.info("Chess YOLOv8 model loaded: %s (labels: %s)", MODEL_PATH, list(names.values())[:6])
+        logger.info("Chess YOLOv8 model loaded: %s (labels: %s)", model_path, list(names.values())[:6])
         return model
     except ImportError:
         logger.warning("ultralytics not installed - using CV heuristic")

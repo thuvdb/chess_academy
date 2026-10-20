@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.core.database import async_session_factory
 from app.core.security import hash_password
+from app.core.config import settings
 from app.models.base import (
     ClassLevel,
     EnrollmentStatus,
@@ -173,7 +174,7 @@ async def seed_center_and_branch(db) -> tuple[Center, Branch]:
         await db.flush()
         logger.info(f"✓ Cập nhật Center hiện có: {center.name} (ID: {center.id})")
 
-    branch_name = "Cơ sở Chính - Quận 1"
+    branch_name = settings.DEFAULT_BRANCH_NAME
     stmt_branch = select(Branch).where(
         Branch.center_id == center.id,
         Branch.name == branch_name,
@@ -202,12 +203,13 @@ async def seed_center_and_branch(db) -> tuple[Center, Branch]:
 async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
     """Bước 3: Khởi tạo đầy đủ 6 Vai trò người dùng thử nghiệm UAT."""
     logger.info("--- BƯỚC 3: Khởi tạo Users (6 Roles chuẩn) ---")
+    seed_pwd = settings.SEED_DEFAULT_PASSWORD
 
     users_data = [
         # 1. Super Admin
         {
             "email": "superadmin@cams.test",
-            "password": "Super@2026!",
+            "password": seed_pwd,
             "full_name": "Vũ Tổng Quản",
             "role": UserRole.SUPER_ADMIN.value,
             "center_id": None,
@@ -217,7 +219,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "super_admin@cams.vn",
-            "password": "Super@2026!",
+            "password": seed_pwd,
             "full_name": "Vũ Tổng Quản",
             "role": UserRole.SUPER_ADMIN.value,
             "center_id": None,
@@ -228,7 +230,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         # 2. Center Admin
         {
             "email": "admin@cams.test",
-            "password": "Admin@2026!",
+            "password": seed_pwd,
             "full_name": "Nguyễn Quản Trị",
             "role": UserRole.CENTER_ADMIN.value,
             "center_id": center.id,
@@ -238,7 +240,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "admin@cams.vn",
-            "password": "Admin@2026!",
+            "password": seed_pwd,
             "full_name": "Nguyễn Quản Trị",
             "role": UserRole.CENTER_ADMIN.value,
             "center_id": center.id,
@@ -249,7 +251,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         # 3. Teachers
         {
             "email": "teacher1@cams.test",
-            "password": "Teacher@2026!",
+            "password": seed_pwd,
             "full_name": "Trần Văn Giáo",
             "role": UserRole.TEACHER.value,
             "center_id": center.id,
@@ -259,7 +261,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "teacher2@cams.test",
-            "password": "Teacher@2026!",
+            "password": seed_pwd,
             "full_name": "Lê Thị Hoa",
             "role": UserRole.TEACHER.value,
             "center_id": center.id,
@@ -269,7 +271,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "teacher@cams.vn",
-            "password": "Teacher@2026!",
+            "password": seed_pwd,
             "full_name": "Trần Văn Giáo",
             "role": UserRole.TEACHER.value,
             "center_id": center.id,
@@ -280,7 +282,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         # 4. Students
         {
             "email": "student1@cams.test",
-            "password": "Student@2026!",
+            "password": seed_pwd,
             "full_name": "Phạm Minh Học",
             "role": UserRole.STUDENT.value,
             "center_id": center.id,
@@ -290,7 +292,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "student2@cams.test",
-            "password": "Student@2026!",
+            "password": seed_pwd,
             "full_name": "Hoàng Bảo Long",
             "role": UserRole.STUDENT.value,
             "center_id": center.id,
@@ -300,7 +302,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "student3@cams.test",
-            "password": "Student@2026!",
+            "password": seed_pwd,
             "full_name": "Võ Thị Mai",
             "role": UserRole.STUDENT.value,
             "center_id": center.id,
@@ -310,7 +312,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         },
         {
             "email": "student@cams.vn",
-            "password": "Student@2026!",
+            "password": seed_pwd,
             "full_name": "Phạm Minh Học",
             "role": UserRole.STUDENT.value,
             "center_id": center.id,
@@ -321,7 +323,7 @@ async def seed_users(db, center: Center, branch: Branch) -> dict[str, User]:
         # 5. Parent
         {
             "email": "parent1@cams.test",
-            "password": "Parent@2026!",
+            "password": seed_pwd,
             "full_name": "Phạm Văn Cha",
             "role": UserRole.PARENT.value,
             "center_id": center.id,
@@ -618,6 +620,10 @@ async def seed_sample_puzzles(db, center: Center, teacher: User) -> None:
 
 async def main() -> None:
     """Hàm điều phối chạy toàn bộ quá trình seed UAT theo thứ tự ràng buộc khóa ngoại."""
+    if settings.APP_ENV == "production":
+        logger.error("❌ Thao tác bị từ chối: Không được phép chạy seed_uat trên môi trường production (APP_ENV=production)!")
+        raise RuntimeError("Seeding is strictly prohibited when APP_ENV=production.")
+
     logger.info("=================================================================")
     logger.info("BẮT ĐẦU KHỞI TẠO DỮ LIỆU UAT CAMS (seed_uat.py)...")
     logger.info("=================================================================")

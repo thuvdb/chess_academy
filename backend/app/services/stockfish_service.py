@@ -8,17 +8,18 @@ logger = logging.getLogger(__name__)
 
 
 def get_stockfish_path() -> str:
-    if hasattr(settings, "STOCKFISH_PATH") and os.path.exists(settings.STOCKFISH_PATH):
+    if settings.STOCKFISH_PATH and os.path.exists(settings.STOCKFISH_PATH):
         return settings.STOCKFISH_PATH
     if os.path.exists("/usr/games/stockfish"):
         return "/usr/games/stockfish"
-    return "stockfish"
+    return settings.STOCKFISH_PATH or "stockfish"
 
 
-def get_stockfish(depth: int = 15) -> Stockfish:
+def get_stockfish(depth: int | None = None) -> Stockfish:
+    effective_depth = settings.STOCKFISH_DEPTH if depth is None else depth
     return Stockfish(
         path=get_stockfish_path(),
-        depth=depth,
+        depth=effective_depth,
         parameters={
             "Threads": 1,
             "Hash": 32,
@@ -122,7 +123,7 @@ def evaluate_alternate_solution(
             return True
 
         # 2. Evaluate the final position with Stockfish
-        stockfish = get_stockfish(depth=15)
+        stockfish = get_stockfish()
         stockfish.set_fen_position(board.fen())
         eval_result = stockfish.get_evaluation()
 

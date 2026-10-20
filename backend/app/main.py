@@ -1,24 +1,45 @@
+import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.core.config import settings
+
+# Configure logging level from settings
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+
+# Production security: disable Swagger docs and debug mode in production
+is_prod = settings.APP_ENV == "production"
+docs_url = None if is_prod else "/docs"
+redoc_url = None if is_prod else "/redoc"
+openapi_url = None if is_prod else "/openapi.json"
+debug_mode = False if is_prod else settings.DEBUG
 
 app = FastAPI(
     title="CAMS API",
     description="Chess Academy Management System API",
-    version="1.0.0"
+    version=settings.APP_VERSION,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
+    debug=debug_mode,
 )
 
-from app.core.config import settings
-
-# CORS: only the configured domains (CORS_ORIGINS env), never "*" with credentials
+# CORS: only the configured domains (BACKEND_CORS_ORIGINS), never "*" with credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 from app.api.api import api_router
+from app.websocket.game_handler import router as websocket_router
 
 @app.get("/")
 async def root():
@@ -28,15 +49,10 @@ async def root():
 async def health_check():
     return {"status": "ok"}
 
-from app.websocket.game_handler import router as websocket_router
 app.include_router(websocket_router)
 app.include_router(api_router, prefix="/api")
 
-# NOTE: no public static mount for scan files. Files are private and served
-# via short-lived HMAC-signed URLs at /api/files/...
-
-import os
-from fastapi.staticfiles import StaticFiles
-
-os.makedirs("uploads/avatars", exist_ok=True)
-app.mount("/static", StaticFiles(directory="uploads"), name="static")
+# Static files mount (avatars, etc.) using configured UPLOAD_DIR
+avatar_dir = os.path.join(settings.UPLOAD_DIR, "avatars")
+os.makedirs(avatar_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=settings.UPLOAD_DIR), name="static")

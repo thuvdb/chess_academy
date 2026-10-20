@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.scan import ScanJob, ScanResult
@@ -29,7 +30,7 @@ from app.schemas.scan import (
 router = APIRouter()
 
 # Max upload size: 50 MB
-MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+MAX_UPLOAD_BYTES = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 ALLOWED_TYPES = {"application/pdf", "application/x-pdf"}
 UPLOAD_ROLES = ("super_admin", "center_admin", "admin", "teacher")
 STAFF_ROLES = UPLOAD_ROLES
