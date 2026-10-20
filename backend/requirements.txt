@@ -25,6 +25,7 @@ stockfish==3.28.*
 ultralytics==8.3.*
 opencv-python-headless==4.10.*
 pymupdf==1.25.*
+google-genai>=1.0.0
 
 # === Data Validation ===
 pydantic==2.10.*
