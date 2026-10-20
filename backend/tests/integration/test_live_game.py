@@ -1,11 +1,16 @@
 import asyncio
+import os
 import websockets
 import json
 import requests
 import uuid
 
-BASE_URL = "http://localhost:8000/api"
-WS_URL = "ws://localhost:8000/ws/game"
+from app.core.config import settings
+
+BASE_URL = os.getenv("API_BASE_URL", f"{settings.API_PUBLIC_URL.rstrip('/')}/api")
+_ws_proto = "wss" if BASE_URL.startswith("https") else "ws"
+_ws_host = BASE_URL.replace("http://", "").replace("https://", "").replace("/api", "").rstrip("/")
+WS_URL = os.getenv("WS_URL", f"{_ws_proto}://{_ws_host}/ws/game")
 
 from app.core.database import async_session_factory
 from app.models.center import Center

@@ -1,8 +1,10 @@
+import os
 import requests
 import uuid
 import datetime
 
 import asyncio
+from app.core.config import settings
 from app.core.database import async_session_factory
 from app.models.center import Center
 from app.models.user import User
@@ -31,7 +33,7 @@ async def setup_test_data():
         
         return admin_email, admin_pass, str(center.id)
 
-BASE_URL = "http://localhost:8000/api"
+BASE_URL = os.getenv("API_BASE_URL", f"{settings.API_PUBLIC_URL.rstrip('/')}/api")
 
 def run_tests():
     print("Starting QA E2E Test for Payment & Invoices...")

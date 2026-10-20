@@ -1,12 +1,13 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from app.core.config import settings
 from app.models.assignment import Assignment
 from app.models.class_ import Class
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 async def test_db():
-    engine = create_async_engine("postgresql+asyncpg://cams_user:cams_password@localhost:5432/cams_db")
+    engine = create_async_engine(settings.DATABASE_URL)
     async_session = async_sessionmaker(engine, expire_on_commit=False)
     
     async with async_session() as db:

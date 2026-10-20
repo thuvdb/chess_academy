@@ -29,7 +29,7 @@ def clean_orphaned_scans():
         for row in result:
             file_url = row[0]
             try:
-                # e.g. http://localhost:8000/scans/<folder_uuid>/source/source.pdf
+                # e.g. /scans/<folder_uuid>/source/source.pdf
                 folder_uuid = file_url.split("/")[-3]
                 if is_valid_uuid(folder_uuid):
                     valid_folder_uuids.add(folder_uuid)
