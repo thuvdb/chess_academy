@@ -103,8 +103,8 @@ class ScanResult(UUIDMixin, Base):
 
     # Relationships
     job: Mapped["ScanJob"] = relationship(back_populates="results")
-    reviewer: Mapped["User"] = relationship(lazy="selectin")
-    puzzle: Mapped["Puzzle"] = relationship(lazy="selectin")
+    reviewer: Mapped["User"] = relationship(lazy="select")
+    puzzle: Mapped["Puzzle"] = relationship(lazy="select")
 
 
 from typing import TYPE_CHECKING  # noqa: E402

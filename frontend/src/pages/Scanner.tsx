@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Chessboard } from 'react-chessboard';
-import { Upload, Search, CheckCircle, XCircle, AlertTriangle, FileText, Loader2, RefreshCw, Eye, Trash2, BookOpen, Play, ZoomIn, ZoomOut, Maximize2, X, RotateCcw } from 'lucide-react';
+import { Upload, Search, CheckCircle, XCircle, AlertTriangle, FileText, Loader2, RefreshCw, Eye, Trash2, BookOpen, Play, ZoomIn, ZoomOut, Maximize2, X, RotateCcw, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -69,6 +69,10 @@ export default function Scanner() {
   const [editingFen, setEditingFen] = useState<string | null>(null);
   const [editFenValue, setEditFenValue] = useState('');
   const [savingApproved, setSavingApproved] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'needs_review'>('all');
+  const [pageSearch, setPageSearch] = useState('');
+  const pageSize = 20;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -178,12 +182,17 @@ export default function Scanner() {
   // ── Load Results ───────────────────────────────────────
   const loadResults = async (job: ScanJob) => {
     setSelectedJob(job);
+    setCurrentPage(1);
+    setFilterStatus('all');
+    setPageSearch('');
     setLoadingResults(true);
     try {
       const { data } = await api.get(`/scan/jobs/${job.id}/results`);
       setResults(data);
-    } catch {
-      toast.error('Failed to load results');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } }; message?: string };
+      const detail = axiosErr.response?.data?.detail || axiosErr.message || 'Lỗi kết nối hoặc phản hồi quá chậm';
+      toast.error(`Không thể tải kết quả: ${detail}`);
       setResults([]);
     } finally {
       setLoadingResults(false);
@@ -280,6 +289,27 @@ export default function Scanner() {
       .map(([sq, v]) => ({ square: sq, piece: v.piece, confidence: v.confidence }))
       .sort((a, b) => a.confidence - b.confidence);
   };
+
+  // ── Filtered & Paginated Results ────────────────────────
+  const filteredResults = results.filter(r => {
+    if (pageSearch.trim()) {
+      const targetPage = parseInt(pageSearch.trim(), 10);
+      if (!isNaN(targetPage) && r.page_number !== targetPage) {
+        return false;
+      }
+    }
+    if (filterStatus === 'pending') return r.review_status === 'pending';
+    if (filterStatus === 'approved') return r.review_status === 'approved';
+    if (filterStatus === 'rejected') return r.review_status === 'rejected';
+    if (filterStatus === 'needs_review') {
+      const lowConf = getLowConfCells(r);
+      return lowConf.length > 0 || (r.confidence_board != null && r.confidence_board < 0.70);
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
+  const paginatedResults = filteredResults.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="p-8">
@@ -414,6 +444,47 @@ export default function Scanner() {
                 </div>
               </div>
 
+              {/* Filter and Pagination Toolbar */}
+              {results.length > 0 && !loadingResults && (
+                <div className="px-5 py-2.5 bg-slate-900/60 border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-slate-400 font-medium mr-1 flex items-center gap-1">
+                      <Filter className="w-3.5 h-3.5" /> Lọc:
+                    </span>
+                    {(['all', 'pending', 'approved', 'rejected', 'needs_review'] as const).map(st => (
+                      <button
+                        key={st}
+                        onClick={() => { setFilterStatus(st); setCurrentPage(1); }}
+                        className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                          filterStatus === st
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                        }`}
+                      >
+                        {st === 'all' && `Tất cả (${results.length})`}
+                        {st === 'pending' && `Chờ duyệt (${results.filter(r => r.review_status === 'pending').length})`}
+                        {st === 'approved' && `Đã duyệt (${results.filter(r => r.review_status === 'approved').length})`}
+                        {st === 'rejected' && `Từ chối (${results.filter(r => r.review_status === 'rejected').length})`}
+                        {st === 'needs_review' && `Cần chú ý (${results.filter(r => getLowConfCells(r).length > 0).length})`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-400">Trang sách:</span>
+                      <input
+                        type="number"
+                        placeholder="Số trang..."
+                        value={pageSearch}
+                        onChange={e => { setPageSearch(e.target.value); setCurrentPage(1); }}
+                        className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {loadingResults ? (
                 <div className="p-12 text-center">
                   <Loader2 className="w-8 h-8 text-purple-400 mx-auto animate-spin mb-3" />
@@ -429,8 +500,9 @@ export default function Scanner() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 p-5 max-h-[calc(100vh-280px)] overflow-y-auto">
-                  {results.map(result => {
+                <>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 p-5 max-h-[calc(100vh-320px)] overflow-y-auto">
+                    {paginatedResults.map(result => {
                     const lowConf = getLowConfCells(result);
                     const fen = result.fen_final || result.fen_candidate;
 
@@ -638,7 +710,36 @@ export default function Scanner() {
                     );
                   })}
                 </div>
-              )}
+
+                {/* Pagination Controls Footer */}
+                {filteredResults.length > pageSize && (
+                  <div className="px-5 py-3 border-t border-slate-700/50 bg-slate-900/60 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">
+                      Hiển thị <span className="text-white font-medium">{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredResults.length)}</span> trên tổng số <span className="text-white font-medium">{filteredResults.length}</span> thế cờ
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" /> Trước
+                      </button>
+                      <span className="px-2 font-medium text-purple-400">
+                        Trang {currentPage} / {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Sau <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             </div>
           )}
         </div>

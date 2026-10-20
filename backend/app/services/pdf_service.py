@@ -23,6 +23,7 @@ SCAN_STORAGE_PATH = storage_service.SCAN_STORAGE_PATH
 STORAGE_BASE_URL = storage_service.STORAGE_BASE_URL
 
 MAX_PAGES_PER_SCAN = 500
+SCAN_DPI = int(os.getenv("SCAN_DPI", "200"))
 
 
 def _save_local(data: bytes, relative_path: str, content_type: str = "application/octet-stream") -> str:
@@ -47,7 +48,7 @@ async def save_pdf(file_bytes: bytes, filename: str, job_id: str) -> tuple[str, 
 async def render_pdf_pages(
     file_bytes: bytes,
     job_id: str,
-    dpi: int = 300,
+    dpi: int = SCAN_DPI,
 ) -> list[dict]:
     """
     Render each PDF page to PNG at given DPI using PyMuPDF (fitz).

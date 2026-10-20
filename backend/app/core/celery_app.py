@@ -20,6 +20,10 @@ celery_app.conf.update(
     task_track_started=True,
     worker_prefetch_multiplier=1,
     task_acks_late=True,
+    task_soft_time_limit=1800,
+    task_time_limit=2100,
+    worker_max_tasks_per_child=50,
+    worker_max_memory_per_child=512000,
     beat_schedule={
         "auto-submit-overdue-assignments-every-10m": {
             "task": "app.tasks.auto_submit_overdue_assignments",

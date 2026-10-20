@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
     max_retries=2,
     default_retry_delay=10,
     acks_late=True,
+    soft_time_limit=1800,
+    time_limit=2100,
 )
 def process_scan_job(self, job_id: str) -> dict:
     """
