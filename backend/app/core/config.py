@@ -104,6 +104,13 @@ class Settings(BaseSettings):
     STOCKFISH_DEPTH: int = 15
     YOLO_MODEL_PATH: str = "models/chess_yolov8s.pt"
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    AI_TUTOR_PROVIDER: str = "gemini"
+    AI_TUTOR_RATE_LIMIT_PER_MINUTE: int = 10
+    AI_TUTOR_RATE_LIMIT_PER_DAY: int = 100
+    AI_TUTOR_CACHE_TTL: int = 3600
+    AI_TUTOR_HISTORY_LIMIT: int = 10
+    AI_TUTOR_MAX_TOKENS: int = 1500
 
     # --- Seed & Defaults ---
     SEED_DEFAULT_PASSWORD: str = "Cams@2026!"
