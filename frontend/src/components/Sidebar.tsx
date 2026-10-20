@@ -19,6 +19,7 @@ import {
   UserCog,
   Settings,
   X,
+  Bot,
 } from 'lucide-react';
 
 interface NavItem {
@@ -51,6 +52,7 @@ const navItems: NavItem[] = [
   { to: '/scanner', label: 'Quét AI bàn cờ', icon: ScanSearch, roles: ['super_admin', 'admin', 'center_admin', 'teacher'] },
   { to: '/puzzles', label: 'Kho bài tập cờ', icon: Swords },
   { to: '/practice', label: 'Luyện tập', icon: Swords },
+  { to: '/ai-tutor', label: 'Hỏi đáp AI', icon: Bot },
   { to: '/assignments', label: 'Bài tập về nhà', icon: ClipboardList },
   { to: '/leaderboard', label: 'Bảng xếp hạng', icon: Trophy },
   { to: '/fee-plans', label: 'Gói học phí', icon: ClipboardList, roles: ['super_admin', 'admin', 'center_admin'] },

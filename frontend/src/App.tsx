@@ -22,6 +22,7 @@ import Invoices from './pages/Invoices';
 import Profile from './pages/Profile';
 import Members from './pages/Members';
 import Settings from './pages/Settings';
+import AiTutor from './pages/AiTutor';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -53,6 +54,7 @@ function App() {
             <Route path="/scanner" element={<Scanner />} />
             <Route path="/puzzles" element={<Puzzles />} />
             <Route path="/practice" element={<Practice />} />
+            <Route path="/ai-tutor" element={<AiTutor />} />
             <Route path="/assignments" element={<Assignments />} />
             <Route path="/assignments/:assignmentId" element={<AssignmentDetail />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
