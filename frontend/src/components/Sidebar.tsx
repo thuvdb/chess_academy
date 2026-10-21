@@ -138,7 +138,7 @@ export default function Sidebar({
           aria-label="Mobile Navigation"
         >
           {/* Header Mobile Drawer */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shrink-0">
                 <GraduationCap className="w-5 h-5 text-white" />
@@ -159,7 +159,7 @@ export default function Sidebar({
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 min-h-0 px-3 py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
             {visibleNavItems.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -167,7 +167,7 @@ export default function Sidebar({
                 end={to === '/'}
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
                     isActive
                       ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                       : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800'
@@ -186,7 +186,7 @@ export default function Sidebar({
           </nav>
 
           {/* User Profile & Logout */}
-          <div className="px-3 pb-4 border-t border-slate-800 pt-4">
+          <div className="px-3 pb-3.5 border-t border-slate-800 pt-3 shrink-0">
             <div
               onClick={() => {
                 onCloseMobile();
@@ -235,15 +235,15 @@ export default function Sidebar({
           2. DESKTOP SIDEBAR (>= 768px / hidden md:flex)
           ======================================================== */}
       <aside
-        className={`hidden md:flex fixed top-0 left-0 h-full bg-slate-900 flex-col border-r border-slate-800 z-30 transition-all duration-300 ease-in-out ${
+        className={`hidden md:flex fixed inset-y-0 left-0 bg-slate-900 flex-col border-r border-slate-800 z-30 transition-all duration-300 ease-in-out ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
         aria-label="Desktop Navigation"
       >
         {/* Desktop Header */}
         <div
-          className={`flex items-center border-b border-slate-800 transition-all duration-300 ${
-            isCollapsed ? 'justify-center flex-col gap-2 py-4 px-2' : 'justify-between px-5 py-4'
+          className={`flex items-center border-b border-slate-800 shrink-0 transition-all duration-300 ${
+            isCollapsed ? 'justify-center flex-col gap-2 py-3 px-2' : 'justify-between px-5 py-3.5'
           }`}
         >
           {isCollapsed ? (
@@ -290,7 +290,7 @@ export default function Sidebar({
         </div>
 
         {/* Desktop Nav Items */}
-        <nav className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2 py-3 space-y-1.5' : 'px-3 py-4 space-y-1'}`}>
+        <nav className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar ${isCollapsed ? 'px-2 py-2.5 space-y-1' : 'px-3 py-2 space-y-0.5'}`}>
           {visibleNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -299,7 +299,7 @@ export default function Sidebar({
               title={isCollapsed ? label : undefined}
               className={({ isActive }) =>
                 `flex items-center rounded-lg font-medium transition-all group ${
-                  isCollapsed ? 'justify-center p-2.5 text-sm' : 'gap-3 px-3 py-2.5 text-sm'
+                  isCollapsed ? 'justify-center p-2 text-sm' : 'gap-3 px-3 py-2 text-sm'
                 } ${
                   isActive
                     ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
@@ -328,8 +328,8 @@ export default function Sidebar({
 
         {/* Desktop User + Logout */}
         <div
-          className={`border-t border-slate-800 ${
-            isCollapsed ? 'px-2 py-3 flex flex-col items-center gap-2' : 'px-3 pb-4 pt-4'
+          className={`border-t border-slate-800 shrink-0 ${
+            isCollapsed ? 'px-2 py-3 flex flex-col items-center gap-2' : 'px-3 pb-3 pt-3'
           }`}
         >
           {isCollapsed ? (
