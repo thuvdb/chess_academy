@@ -262,11 +262,11 @@ export const AiTutor: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] bg-slate-950 text-slate-100 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+    <div className="flex h-[calc(100dvh-57px)] md:h-dvh w-full bg-slate-950 text-slate-100 overflow-hidden">
       {/* ── LEFT SIDEBAR: SESSION LIST ───────────────────────────────────── */}
-      <div className="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 hidden md:flex">
+      <div className="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 hidden md:flex h-full min-h-0">
         {/* Header & New Chat button */}
-        <div className="p-4 border-b border-slate-800">
+        <div className="p-4 border-b border-slate-800 shrink-0">
           <button
             onClick={handleNewChat}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-900/30 transition"
@@ -277,7 +277,7 @@ export const AiTutor: React.FC = () => {
         </div>
 
         {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-1">
           <div className="text-xs font-semibold text-slate-400 px-3 py-1.5 uppercase tracking-wider">
             Lịch sử hỏi đáp
           </div>
@@ -317,16 +317,16 @@ export const AiTutor: React.FC = () => {
         </div>
 
         {/* Footer info */}
-        <div className="p-3 border-t border-slate-800 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+        <div className="p-3 border-t border-slate-800 shrink-0 text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           <span>Trợ lý Huấn luyện viên CAMS AI</span>
         </div>
       </div>
 
       {/* ── RIGHT MAIN CHAT AREA ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col bg-slate-950 min-w-0">
+      <div className="flex-1 flex flex-col bg-slate-950 min-w-0 h-full min-h-0">
         {/* Chat Header */}
-        <div className="h-16 px-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/60 backdrop-blur-md">
+        <div className="h-16 px-4 sm:px-6 border-b border-slate-800 shrink-0 flex items-center justify-between bg-slate-900/60 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/20 text-white">
               <Bot className="w-6 h-6" />
@@ -356,7 +356,7 @@ export const AiTutor: React.FC = () => {
         </div>
 
         {/* Messages Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6">
           {isLoadingHistory ? (
             <div className="flex items-center justify-center h-full text-slate-500 gap-2">
               <RefreshCw className="w-5 h-5 animate-spin" />
@@ -457,7 +457,7 @@ export const AiTutor: React.FC = () => {
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
+        <div className="shrink-0 p-3 sm:p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
           <form
             onSubmit={(e) => {
               e.preventDefault();

@@ -53,7 +53,7 @@ export default function AppLayout() {
 
       {/* Main Content Area */}
       <main
-        className={`flex-1 min-h-[calc(100vh-57px)] md:min-h-screen w-full transition-all duration-300 ease-in-out ${
+        className={`flex-1 min-h-[calc(100dvh-57px)] md:min-h-screen w-full transition-all duration-300 ease-in-out ${
           isCollapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
