@@ -81,6 +81,30 @@ async def check_ai_tutor_rate_limit(user_id: uuid.UUID) -> tuple[bool, Optional[
         return True, None
 
 
+async def check_ai_tutor_tts_rate_limit(user_id: uuid.UUID) -> tuple[bool, Optional[str]]:
+    """
+    Check per-minute rate limit for AI Tutor TTS requests.
+    Returns (is_allowed, error_message).
+    """
+    try:
+        redis = get_redis_client()
+        if redis is None:
+            return True, None
+
+        key = f"cams:ratelimit:ai_tutor:tts:{user_id}:min"
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, 60)
+        if count > settings.AI_TUTOR_TTS_RATE_LIMIT_PER_MINUTE:
+            return False, "Bạn đang yêu cầu phát giọng đọc quá nhanh. Vui lòng đợi trong giây lát rồi thử lại."
+
+        return True, None
+    except Exception as e:
+        logger.warning("Redis TTS rate limit check error (allowing request through): %s", e)
+        return True, None
+
+
+
 async def get_cached_ai_response(query: str) -> Optional[dict[str, Any]]:
     """Retrieve cached AI answer for repeated questions."""
     try:

@@ -37,3 +37,9 @@ class ChatSessionOut(BaseModel):
 
 class ChatSessionDetailOut(ChatSessionOut):
     messages: list[ChatMessageOut] = []
+
+
+class TTSRequest(BaseModel):
+    message_id: uuid.UUID = Field(..., description="ID tin nhắn của trợ lý AI cần phát giọng đọc")
+    voice: Optional[str] = Field(None, description="Tên giọng đọc (vi-VN-HoaiMyNeural hoặc vi-VN-NamMinhNeural)")
+

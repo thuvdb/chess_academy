@@ -7,7 +7,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,7 +15,12 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db, async_session_factory
-from app.core.redis import check_ai_tutor_rate_limit, get_cached_ai_response, set_cached_ai_response
+from app.core.redis import (
+    check_ai_tutor_rate_limit,
+    check_ai_tutor_tts_rate_limit,
+    get_cached_ai_response,
+    set_cached_ai_response,
+)
 from app.models.ai_tutor import ChatMessage, ChatSession
 from app.models.user import User
 from app.schemas.ai_tutor import (
@@ -23,14 +28,28 @@ from app.schemas.ai_tutor import (
     ChatRequest,
     ChatSessionDetailOut,
     ChatSessionOut,
+    TTSRequest,
 )
-from app.services.ai_tutor.board_validator import extract_and_validate_board
-from app.services.ai_tutor.prompt import AI_TUTOR_SYSTEM_PROMPT
-from app.services.ai_tutor.provider import AIProviderError, get_llm_provider
+from app.services.ai_tutor import (
+    AI_TUTOR_SYSTEM_PROMPT,
+    AIProviderError,
+    TTSProviderError,
+    extract_and_validate_board,
+    get_cached_audio_path,
+    get_llm_provider,
+    get_tts_provider,
+    prepare_text_for_speech,
+    save_cached_audio,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+SUPPORTED_VOICES = {
+    "vi-VN-HoaiMyNeural": "Nữ (Hoài My)",
+    "vi-VN-NamMinhNeural": "Nam (Nam Minh)",
+}
 
 
 def _generate_title(message: str) -> str:
@@ -256,3 +275,87 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/tts")
+async def generate_tts(
+    request: TTSRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate speech audio (MP3) for an assistant message in the user's session.
+    Guarded against unauthorized access and rate-limited via Redis.
+    """
+    # 1. Check TTS rate limit
+    is_allowed, error_msg = await check_ai_tutor_tts_rate_limit(current_user.id)
+    if not is_allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error_msg)
+
+    # 2. Validate voice choice
+    voice = request.voice if request.voice in SUPPORTED_VOICES else settings.AI_TUTOR_TTS_VOICE
+
+    # 3. Query message & verify ownership (must belong to a session of current_user)
+    stmt = (
+        select(ChatMessage)
+        .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+        .where(
+            ChatMessage.id == request.message_id,
+            ChatSession.user_id == current_user.id,
+        )
+    )
+    result = await db.execute(stmt)
+    message = result.scalars().first()
+
+    if not message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy tin nhắn hoặc bạn không có quyền truy cập.",
+        )
+
+    # 4. Prepare text for speech (clean markdown & format chess notation)
+    speech_text = prepare_text_for_speech(message.content, max_chars=settings.AI_TUTOR_TTS_MAX_CHARS)
+    if not speech_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tin nhắn này không có nội dung văn bản để đọc.",
+        )
+
+    # 5. Check cache on disk
+    cached_path = get_cached_audio_path(speech_text, voice)
+    if cached_path and cached_path.is_file():
+        return FileResponse(
+            path=str(cached_path),
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline; filename=speech.mp3",
+                "X-Cache": "HIT",
+            },
+        )
+
+    # 6. Generate speech audio using provider
+    provider = get_tts_provider()
+    try:
+        audio_bytes = await provider.generate_speech(speech_text, voice)
+    except TTSProviderError as e:
+        logger.warning("TTS Provider error: %s", e.message)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=e.message)
+    except Exception as e:
+        logger.error("Unexpected TTS error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tạo giọng đọc lúc này. Vui lòng thử lại sau.",
+        )
+
+    # 7. Save to disk cache for future requests
+    save_cached_audio(speech_text, voice, audio_bytes)
+
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={
+            "Content-Disposition": "inline; filename=speech.mp3",
+            "X-Cache": "MISS",
+        },
+    )
+
