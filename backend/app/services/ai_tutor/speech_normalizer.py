@@ -92,14 +92,24 @@ def _replace_piece_move(match: re.Match) -> str:
     return " ".join(parts)
 
 
-def _replace_pawn_capture(match: re.Match) -> str:
-    """Format pawn capture like 'exd5', 'cxd4', 'exd6 e.p.'."""
+def _replace_pawn_move(match: re.Match) -> str:
+    """Format pawn moves like 'exd5', 'cxd4', 'e8=Q#', 'g8=N', 'e4+'."""
     source_file = match.group(1)
+    is_capture = match.group(2)
     target_square = match.group(3)
-    promotion = match.group(4)
-    check_mate = match.group(5)
+    target_rank = match.group(4)
+    promotion = match.group(5)
+    check_mate = match.group(6)
 
-    parts = [source_file, "ăn", target_square]
+    # If it's a plain square like 'e4' without capture, promotion, or check, leave as is
+    if not is_capture and not promotion and not check_mate:
+        return match.group(0)
+
+    if is_capture:
+        parts = [source_file, "ăn", target_square]
+    else:
+        parts = [source_file + target_rank]
+
     if promotion:
         prom_char = promotion.replace("=", "").upper()
         parts.append(f"phong cấp {CHESS_PROMOTION_NAMES.get(prom_char, prom_char)}")
@@ -110,14 +120,6 @@ def _replace_pawn_capture(match: re.Match) -> str:
         parts.append("chiếu")
 
     return " ".join(parts)
-
-
-def _replace_pawn_check(match: re.Match) -> str:
-    """Format pawn check/mate like 'e4+', 'd8#'."""
-    square = match.group(1)
-    check_mate = match.group(2)
-    label = "chiếu hết" if check_mate == "#" else "chiếu"
-    return f"{square} {label}"
 
 
 def convert_chess_notation_to_speech(text: str) -> str:
@@ -132,17 +134,13 @@ def convert_chess_notation_to_speech(text: str) -> str:
     # 2. Numbered moves (e.g., '1. e4 e5' -> 'nước 1: e4 e5')
     result = re.sub(r"\b(\d+)\.\s*", r"nước \1: ", result)
 
-    # 3. Piece moves: Nf3, Bxf7+, Qh5#, Nbd7, R1e2, e8=Q#
+    # 3. Piece moves: Nf3, Bxf7+, Qh5#, Nbd7, R1e2
     piece_move_regex = re.compile(r"\b([KQRBN])([a-h1-8])?(x)?([a-h][1-8])(=[QRBN])?([+#])?(?!\w)")
     result = piece_move_regex.sub(_replace_piece_move, result)
 
-    # 4. Pawn capture moves: exd5, cxd4, exd6#
-    pawn_capture_regex = re.compile(r"\b([a-h])(x)([a-h][1-8])(=[QRBN])?([+#])?(?!\w)")
-    result = pawn_capture_regex.sub(_replace_pawn_capture, result)
-
-    # 5. Pawn check/mate: e4+, d5#
-    pawn_check_regex = re.compile(r"\b([a-h][1-8])([+#])(?!\w)")
-    result = pawn_check_regex.sub(_replace_pawn_check, result)
+    # 4. Pawn moves: captures (exd5), promotions (e8=Q#), checks (e4+)
+    pawn_move_regex = re.compile(r"\b([a-h])(?:(x)([a-h][1-8])|([1-8]))(=[QRBN])?([+#])?(?!\w)")
+    result = pawn_move_regex.sub(_replace_pawn_move, result)
 
     return result
 
