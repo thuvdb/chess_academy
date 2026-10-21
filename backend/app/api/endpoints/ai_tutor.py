@@ -40,6 +40,7 @@ from app.services.ai_tutor import (
     get_tts_provider,
     prepare_text_for_speech,
     save_cached_audio,
+    search_approved_puzzles,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,6 +193,7 @@ async def chat_stream(
         if cached:
             clean_content = cached.get("content", "")
             board_data = cached.get("board_data")
+            puzzle_data = cached.get("puzzle_data")
 
             # Stream cached text in small chunks for consistent UI feel
             chunk_size = 30
@@ -202,6 +204,9 @@ async def chat_stream(
             if board_data:
                 yield f"event: board\ndata: {json.dumps({'board_data': board_data}, ensure_ascii=False)}\n\n"
 
+            if puzzle_data:
+                yield f"event: puzzles\ndata: {json.dumps({'puzzles': puzzle_data}, ensure_ascii=False)}\n\n"
+
             # Save cached assistant message to DB
             async with async_session_factory() as db:
                 asst_msg = ChatMessage(
@@ -209,6 +214,7 @@ async def chat_stream(
                     role="assistant",
                     content=clean_content,
                     board_data=board_data,
+                    puzzle_data=puzzle_data,
                 )
                 db.add(asst_msg)
                 await db.commit()
@@ -217,6 +223,45 @@ async def chat_stream(
 
             yield f"event: done\ndata: {json.dumps({'session_id': str(session_id), 'message_id': msg_id})}\n\n"
             return
+
+        # Puzzles collected during tool execution
+        retrieved_puzzles: list[dict[str, Any]] = []
+
+        async def handle_tool_call(name: str, args: dict[str, Any]) -> dict[str, Any]:
+            if name == "search_puzzles":
+                theme = args.get("theme", "")
+                level = args.get("level")
+                limit = args.get("limit", 2)
+                async with async_session_factory() as db:
+                    puzzles = await search_approved_puzzles(
+                        db=db,
+                        user_id=current_user.id,
+                        theme=theme,
+                        level=level,
+                        limit=limit,
+                    )
+                retrieved_puzzles.extend(puzzles)
+                # Formulate safe LLM tool response WITHOUT solution moves or internal secret details
+                return {
+                    "puzzles_found": len(puzzles),
+                    "theme": theme,
+                    "puzzles": [
+                        {
+                            "id": p["id"],
+                            "title": p["title"],
+                            "side_to_move": "Trắng đi trước" if p["side_to_move"] == "w" else "Đen đi trước",
+                            "theme": p["theme"],
+                            "difficulty": p["difficulty"],
+                        }
+                        for p in puzzles
+                    ],
+                    "message": (
+                        f"Đã tìm thấy {len(puzzles)} thế cờ từ kho bài tập."
+                        if puzzles
+                        else f"Không tìm thấy bài tập nào với chủ đề '{theme}' trong kho bài tập."
+                    ),
+                }
+            return {"error": f"Unknown tool: {name}"}
 
         # Call LLM Provider
         provider = get_llm_provider()
@@ -227,6 +272,7 @@ async def chat_stream(
                 messages=history_payload,
                 system_instruction=AI_TUTOR_SYSTEM_PROMPT,
                 max_tokens=settings.AI_TUTOR_MAX_TOKENS,
+                tool_handler=handle_tool_call,
             ):
                 accumulated_text += chunk
                 # Yield text chunk to client
@@ -247,6 +293,9 @@ async def chat_stream(
         if board_data:
             yield f"event: board\ndata: {json.dumps({'board_data': board_data}, ensure_ascii=False)}\n\n"
 
+        if retrieved_puzzles:
+            yield f"event: puzzles\ndata: {json.dumps({'puzzles': retrieved_puzzles}, ensure_ascii=False)}\n\n"
+
         # 6. Save assistant message to Database & Cache
         async with async_session_factory() as db:
             asst_msg = ChatMessage(
@@ -254,6 +303,7 @@ async def chat_stream(
                 role="assistant",
                 content=clean_text,
                 board_data=board_data,
+                puzzle_data=retrieved_puzzles if retrieved_puzzles else None,
             )
             db.add(asst_msg)
             await db.commit()
@@ -261,7 +311,12 @@ async def chat_stream(
             msg_id = str(asst_msg.id)
 
         # Cache the validated response
-        await set_cached_ai_response(request.message, clean_text, board_data)
+        await set_cached_ai_response(
+            request.message,
+            clean_text,
+            board_data,
+            puzzle_data=retrieved_puzzles if retrieved_puzzles else None,
+        )
 
         # 7. Complete SSE stream
         yield f"event: done\ndata: {json.dumps({'session_id': str(session_id), 'message_id': msg_id})}\n\n"

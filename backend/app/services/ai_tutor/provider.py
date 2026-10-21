@@ -5,11 +5,44 @@ Supports Google Gemini via google-genai SDK and Mock provider for testing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def get_search_puzzles_tool():
+    """Build the FunctionDeclaration for Gemini tool calling to search Puzzle Bank."""
+    from google.genai import types
+
+    func_decl = types.FunctionDeclaration(
+        name="search_puzzles",
+        description=(
+            "Tìm kiếm bài tập cờ thế thực tế đã được duyệt từ kho Puzzle Bank của Học viện CAMS. "
+            "Gọi tool này khi học viên xin bài tập, muốn giải cờ thế hoặc luyện tập chiến thuật."
+        ),
+        parameters_json_schema={
+            "type": "object",
+            "properties": {
+                "theme": {
+                    "type": "string",
+                    "description": "Chủ đề bài tập (ví dụ: 'ghim', 'đòn đôi', 'fork', 'chiếu hết', 'mate_in_1', 'mate_in_2', 'tàn cuộc', 'khai cuộc').",
+                },
+                "level": {
+                    "type": "string",
+                    "enum": ["easy", "medium", "hard"],
+                    "description": "Cấp độ khó của bài tập (mặc định 'easy').",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Số lượng bài tập cần tìm (tối đa 3).",
+                },
+            },
+            "required": ["theme"],
+        },
+    )
+    return types.Tool(function_declarations=[func_decl])
 
 
 class AIProviderError(Exception):
@@ -29,6 +62,7 @@ class LLMProvider(ABC):
         system_instruction: str,
         max_tokens: int = 1500,
         temperature: float = 0.7,
+        tool_handler: Optional[Callable[[str, dict], Awaitable[dict]]] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chunks of response text from the LLM."""
         pass
@@ -37,7 +71,7 @@ class LLMProvider(ABC):
 class GeminiLLMProvider(LLMProvider):
     """Google Gemini LLM implementation using the modern google-genai SDK."""
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: str, model: str = "gemini-3.8-flash"):
         self.api_key = api_key
         self.model = model
         # Lazy initialization
@@ -59,6 +93,7 @@ class GeminiLLMProvider(LLMProvider):
         system_instruction: str,
         max_tokens: int = 1500,
         temperature: float = 0.7,
+        tool_handler: Optional[Callable[[str, dict], Awaitable[dict]]] = None,
     ) -> AsyncGenerator[str, None]:
         client = self._get_client()
         try:
@@ -74,21 +109,75 @@ class GeminiLLMProvider(LLMProvider):
                     )
                 )
 
+            tools = [get_search_puzzles_tool()] if tool_handler else None
+
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 max_output_tokens=max_tokens,
                 temperature=temperature,
+                tools=tools,
             )
 
-            response_stream = await client.aio.models.generate_content_stream(
-                model=self.model,
-                contents=contents,
-                config=config,
-            )
+            # Check for tool calling up to 2 iterations
+            max_iterations = 2
+            current_iteration = 0
 
-            async for chunk in response_stream:
-                if chunk and chunk.text:
-                    yield chunk.text
+            while current_iteration < max_iterations:
+                current_iteration += 1
+
+                # If tools are configured, test if model invokes a function call
+                if tools:
+                    response = await client.aio.models.generate_content(
+                        model=self.model,
+                        contents=contents,
+                        config=config,
+                    )
+
+                    if response.function_calls and tool_handler:
+                        call = response.function_calls[0]
+                        logger.info("LLM requested tool call: %s(args=%s)", call.name, call.args)
+
+                        # Execute tool handler
+                        tool_result = await tool_handler(call.name, dict(call.args or {}))
+
+                        # Append model function call turn and tool response turn
+                        if response.candidates and response.candidates[0].content:
+                            contents.append(response.candidates[0].content)
+
+                        contents.append(
+                            types.Content(
+                                role="tool",
+                                parts=[
+                                    types.Part.from_function_response(
+                                        name=call.name,
+                                        response=tool_result,
+                                    )
+                                ],
+                            )
+                        )
+                        # Disable tools for subsequent generation turn so it produces final message
+                        config.tools = None
+                        tools = None
+                        continue
+                    else:
+                        # No tool called: yield text response from candidate
+                        if response.text:
+                            chunk_size = 20
+                            for i in range(0, len(response.text), chunk_size):
+                                yield response.text[i : i + chunk_size]
+                                await asyncio.sleep(0.01)
+                        return
+                else:
+                    # Stream final text response
+                    response_stream = await client.aio.models.generate_content_stream(
+                        model=self.model,
+                        contents=contents,
+                        config=config,
+                    )
+                    async for chunk in response_stream:
+                        if chunk and chunk.text:
+                            yield chunk.text
+                    return
 
         except asyncio.TimeoutError:
             logger.warning("Gemini API call timed out after configured threshold.")
@@ -120,11 +209,27 @@ class MockLLMProvider(LLMProvider):
         system_instruction: str,
         max_tokens: int = 1500,
         temperature: float = 0.7,
+        tool_handler: Optional[Callable[[str, dict], Awaitable[dict]]] = None,
     ) -> AsyncGenerator[str, None]:
         last_message = messages[-1].get("content", "").lower() if messages else ""
 
         if self.canned_response:
             response = self.canned_response
+        elif any(k in last_message for k in ["bài tập", "thế cờ", "puzzle", "đòn ghim", "đòn đôi", "luyện tập"]) and tool_handler:
+            # Simulate tool call to search_puzzles
+            theme = "ghim" if "ghim" in last_message else ("đòn đôi" if "đôi" in last_message else "chiến thuật")
+            tool_res = await tool_handler("search_puzzles", {"theme": theme, "limit": 2})
+            count = tool_res.get("puzzles_found", 0)
+            if count > 0:
+                response = (
+                    f"Thầy đã tìm thấy {count} thế cờ phù hợp về chủ đề {theme} từ kho Puzzle Bank của Học viện CAMS cho con đây! "
+                    "Con hãy quan sát kĩ bàn cờ bên dưới và đi thử nước tối ưu nhất nhé."
+                )
+            else:
+                response = (
+                    f"Hiện tại trong kho bài tập của Học viện chưa có bài tập về chủ đề '{theme}'. "
+                    "Con có thể thử luyện tập các chủ đề phổ biến khác như: đòn ghim, đòn đôi, hoặc chiếu hết trong 1-2 nước nhé!"
+                )
         elif any(k in last_message for k in ["khai cuộc ý", "italian game", "minh họa"]):
             response = (
                 "Chào con! Khai cuộc Ý (Italian Game) là một trong những khai cuộc kinh điển và rất tốt cho học viên CAMS.\n\n"

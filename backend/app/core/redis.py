@@ -131,6 +131,7 @@ async def set_cached_ai_response(
     content: str,
     board_data: Optional[dict[str, Any]],
     ttl: Optional[int] = None,
+    puzzle_data: Optional[Any] = None,
 ) -> None:
     """Store AI response in cache."""
     try:
@@ -146,6 +147,7 @@ async def set_cached_ai_response(
         data = {
             "content": content,
             "board_data": board_data,
+            "puzzle_data": puzzle_data,
         }
         expire_seconds = ttl if ttl is not None else settings.AI_TUTOR_CACHE_TTL
         await redis.setex(cache_key, expire_seconds, json.dumps(data))
