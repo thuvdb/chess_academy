@@ -19,6 +19,7 @@ class ChatMessageOut(BaseModel):
     role: str
     content: str
     board_data: Optional[dict[str, Any]] = None
+    puzzle_data: Optional[Any] = None
     created_at: datetime
 
     class Config:
