@@ -177,3 +177,293 @@ async def search_approved_puzzles(
         })
 
     return valid_puzzles
+
+
+async def record_puzzle_attempt(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    puzzle_id: uuid.UUID,
+    is_correct: bool,
+    session_id: Optional[uuid.UUID] = None,
+    increment_attempt: bool = True,
+    increment_hint: bool = False,
+) -> AIPuzzleAttempt:
+    """Track or update student puzzle attempt for AI Tutor session."""
+    stmt = (
+        select(AIPuzzleAttempt)
+        .where(
+            AIPuzzleAttempt.user_id == user_id,
+            AIPuzzleAttempt.puzzle_id == puzzle_id,
+        )
+    )
+    if session_id:
+        stmt = stmt.where(AIPuzzleAttempt.session_id == session_id)
+
+    res = await db.execute(stmt.order_by(desc(AIPuzzleAttempt.created_at)))
+    attempt = res.scalars().first()
+
+    if not attempt:
+        attempt = AIPuzzleAttempt(
+            user_id=user_id,
+            puzzle_id=puzzle_id,
+            session_id=session_id,
+            is_correct=is_correct,
+            attempts_count=1 if increment_attempt else 0,
+            hints_used=1 if increment_hint else 0,
+        )
+        db.add(attempt)
+    else:
+        if increment_attempt:
+            attempt.attempts_count += 1
+        if increment_hint:
+            attempt.hints_used += 1
+        if is_correct:
+            attempt.is_correct = True
+
+    await db.commit()
+    await db.refresh(attempt)
+    return attempt
+
+
+async def check_puzzle_move(
+    db: AsyncSession,
+    puzzle_id: uuid.UUID,
+    user_id: uuid.UUID,
+    move_str: str,
+    current_fen: str,
+    step_index: int = 0,
+    session_id: Optional[uuid.UUID] = None,
+) -> dict[str, Any]:
+    """
+    Validate student move against puzzle solutions line.
+    Handles player turn, computes next board FEN, and executes opponent counter-move if applicable.
+    """
+    # 1. Fetch puzzle with solutions
+    stmt = (
+        select(Puzzle)
+        .options(selectinload(Puzzle.solutions))
+        .where(Puzzle.id == puzzle_id)
+    )
+    res = await db.execute(stmt)
+    puzzle = res.scalar_one_or_none()
+    if not puzzle:
+        raise ValueError("Thế cờ không tồn tại.")
+
+    # 2. Parse board state and student move
+    try:
+        board = chess.Board(current_fen)
+    except Exception as e:
+        raise ValueError(f"FEN không hợp lệ: {e}")
+
+    clean_move = (move_str or "").strip()
+    try:
+        move = chess.Move.from_uci(clean_move.lower())
+        if move not in board.legal_moves:
+            move = board.parse_san(clean_move)
+    except Exception:
+        try:
+            move = board.parse_san(clean_move)
+        except Exception:
+            # Illegal move on the board
+            await record_puzzle_attempt(
+                db=db,
+                user_id=user_id,
+                puzzle_id=puzzle_id,
+                is_correct=False,
+                session_id=session_id,
+            )
+            return {
+                "is_correct": False,
+                "is_completed": False,
+                "opponent_move": None,
+                "next_fen": current_fen,
+                "message": "Nước đi không hợp lệ theo luật cờ vua. Hãy thử lại!",
+            }
+
+    # 3. Match against expected solution line
+    sorted_solutions = sorted(puzzle.solutions, key=lambda s: s.move_order)
+    solutions_by_order = {s.move_order: s for s in sorted_solutions}
+
+    # Expected order for student's move at this step: 1, 3, 5...
+    expected_order = step_index * 2 + 1
+    expected_sol = solutions_by_order.get(expected_order)
+
+    user_uci = move.uci().lower()
+    is_correct = False
+
+    if expected_sol and expected_sol.move_uci.lower() == user_uci:
+        is_correct = True
+    elif board.is_checkmate():
+        # Alternative move delivering checkmate is also accepted as correct
+        is_correct = True
+
+    if not is_correct:
+        await record_puzzle_attempt(
+            db=db,
+            user_id=user_id,
+            puzzle_id=puzzle_id,
+            is_correct=False,
+            session_id=session_id,
+        )
+        return {
+            "is_correct": False,
+            "is_completed": False,
+            "opponent_move": None,
+            "next_fen": current_fen,
+            "message": "Nước đi chưa chính xác, con hãy quan sát kĩ và thử lại nhé!",
+        }
+
+    # 4. Move is correct! Apply to board
+    board.push(move)
+
+    if board.is_checkmate():
+        await record_puzzle_attempt(
+            db=db,
+            user_id=user_id,
+            puzzle_id=puzzle_id,
+            is_correct=True,
+            session_id=session_id,
+        )
+        return {
+            "is_correct": True,
+            "is_completed": True,
+            "opponent_move": None,
+            "next_fen": board.fen(),
+            "message": "Chiếu hết! Con đã giải chính xác bài tập cờ thế này, rất xuất sắc!",
+        }
+
+    # Check if there is an opponent counter-move
+    opp_order = expected_order + 1
+    opp_sol = solutions_by_order.get(opp_order)
+
+    if opp_sol:
+        try:
+            opp_move = chess.Move.from_uci(opp_sol.move_uci.lower())
+            if opp_move in board.legal_moves:
+                board.push(opp_move)
+                return {
+                    "is_correct": True,
+                    "is_completed": False,
+                    "opponent_move": {
+                        "uci": opp_sol.move_uci,
+                        "san": opp_sol.move_san,
+                    },
+                    "next_fen": board.fen(),
+                    "message": f"Nước đi rất hay! Đối thủ đã đáp trả {opp_sol.move_san}.",
+                }
+        except Exception as e:
+            logger.warning("Failed to play opponent counter move: %s", e)
+
+    # If no further opponent moves or at end of line:
+    await record_puzzle_attempt(
+        db=db,
+        user_id=user_id,
+        puzzle_id=puzzle_id,
+        is_correct=True,
+        session_id=session_id,
+    )
+    return {
+        "is_correct": True,
+        "is_completed": True,
+        "opponent_move": None,
+        "next_fen": board.fen(),
+        "message": "Tuyệt vời! Con đã hoàn thành tất cả các nước đi chính xác!",
+    }
+
+
+async def get_puzzle_solution(
+    db: AsyncSession,
+    puzzle_id: uuid.UUID,
+    user_id: uuid.UUID,
+    session_id: Optional[uuid.UUID] = None,
+) -> dict[str, Any]:
+    """Retrieve full official solution line for a puzzle when student requests it."""
+    stmt = (
+        select(Puzzle)
+        .options(selectinload(Puzzle.solutions))
+        .where(Puzzle.id == puzzle_id)
+    )
+    res = await db.execute(stmt)
+    puzzle = res.scalar_one_or_none()
+    if not puzzle:
+        raise ValueError("Thế cờ không tồn tại.")
+
+    sorted_solutions = sorted(puzzle.solutions, key=lambda s: s.move_order)
+
+    # Record that student opened the solution
+    await record_puzzle_attempt(
+        db=db,
+        user_id=user_id,
+        puzzle_id=puzzle_id,
+        is_correct=False,
+        session_id=session_id,
+        increment_attempt=False,
+    )
+
+    return {
+        "puzzle_id": str(puzzle.id),
+        "title": puzzle.title or "Bài tập cờ thế",
+        "theme": puzzle.puzzle_type or "Chiến thuật",
+        "fen": puzzle.fen,
+        "moves": [
+            {
+                "move_order": s.move_order,
+                "uci": s.move_uci,
+                "san": s.move_san,
+                "side": s.side or ("w" if s.move_order % 2 != 0 else "b"),
+                "explanation": s.explanation or f"Nước {s.move_san}",
+            }
+            for s in sorted_solutions
+        ],
+    }
+
+
+async def explain_puzzle_solution(
+    db: AsyncSession,
+    puzzle_id: uuid.UUID,
+) -> str:
+    """Generate LLM tactical explanation grounded strictly on the DB solution."""
+    from app.services.ai_tutor.provider import get_llm_provider
+
+    stmt = (
+        select(Puzzle)
+        .options(selectinload(Puzzle.solutions))
+        .where(Puzzle.id == puzzle_id)
+    )
+    res = await db.execute(stmt)
+    puzzle = res.scalar_one_or_none()
+    if not puzzle:
+        raise ValueError("Thế cờ không tồn tại.")
+
+    sorted_solutions = sorted(puzzle.solutions, key=lambda s: s.move_order)
+    moves_desc = []
+    for s in sorted_solutions:
+        who = "Trắng" if s.side == "w" else "Đen"
+        moves_desc.append(f"Nước {s.move_order} ({who}): {s.move_san}")
+
+    moves_str = "\n".join(moves_desc) if moves_desc else "Chiếu hết hoặc đòn chiến thuật."
+
+    system_instruction = (
+        "Bạn là Huấn luyện viên Cờ vua tại Học viện CAMS. "
+        "Hãy giải thích ngắn gọn, dễ hiểu và truyền cảm hứng (3-5 câu) cho học viên nhỏ tuổi "
+        "về ý đồ chiến thuật cốt lõi của bài tập cờ thế này. "
+        "QUAN TRỌNG: Bám sát ĐÚNG chuỗi nước đi thực tế được cung cấp, không bịa thêm nước đi ngoài chuỗi."
+    )
+
+    user_prompt = (
+        f"Thế cờ xuất phát: {puzzle.fen}\n"
+        f"Chủ đề chiến thuật: {puzzle.puzzle_type or 'Chiến thuật'}\n"
+        f"Chuỗi nước đi đáp án chuẩn xác từ kho bài tập CAMS:\n{moves_str}\n\n"
+        "Hãy giải thích ý nghĩa chiến thuật đằng sau chuỗi nước đi trên cho học viên."
+    )
+
+    provider = get_llm_provider()
+    chunks = []
+    async for chunk in provider.stream_chat(
+        messages=[{"role": "user", "content": user_prompt}],
+        system_instruction=system_instruction,
+        max_tokens=500,
+    ):
+        chunks.append(chunk)
+
+    return "".join(chunks).strip()

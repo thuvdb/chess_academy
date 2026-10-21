@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,23 +22,34 @@ from app.core.redis import (
     set_cached_ai_response,
 )
 from app.models.ai_tutor import ChatMessage, ChatSession
+from app.models.puzzle import Puzzle
 from app.models.user import User
 from app.schemas.ai_tutor import (
     ChatMessageOut,
     ChatRequest,
     ChatSessionDetailOut,
     ChatSessionOut,
+    OpponentMoveData,
+    PuzzleCheckRequest,
+    PuzzleCheckResponse,
+    PuzzleExplainResponse,
+    PuzzleSolutionMove,
+    PuzzleSolutionResponse,
     TTSRequest,
 )
 from app.services.ai_tutor import (
     AI_TUTOR_SYSTEM_PROMPT,
     AIProviderError,
     TTSProviderError,
+    check_puzzle_move,
+    explain_puzzle_solution,
     extract_and_validate_board,
     get_cached_audio_path,
     get_llm_provider,
+    get_puzzle_solution,
     get_tts_provider,
     prepare_text_for_speech,
+    record_puzzle_attempt,
     save_cached_audio,
     search_approved_puzzles,
 )
@@ -413,4 +424,104 @@ async def generate_tts(
             "X-Cache": "MISS",
         },
     )
+
+
+@router.post("/puzzles/{puzzle_id}/check", response_model=PuzzleCheckResponse)
+async def check_move(
+    puzzle_id: uuid.UUID,
+    req: PuzzleCheckRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Validate a student's move for an AI Tutor interactive puzzle.
+    Returns whether the move was correct, whether the puzzle is completed,
+    and the opponent's counter-move if applicable.
+    """
+    try:
+        res = await check_puzzle_move(
+            db=db,
+            puzzle_id=puzzle_id,
+            user_id=current_user.id,
+            move_str=req.move,
+            current_fen=req.current_fen,
+            step_index=req.step_index,
+            session_id=req.session_id,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/puzzles/{puzzle_id}/hint")
+async def get_hint(
+    puzzle_id: uuid.UUID,
+    session_id: Optional[uuid.UUID] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get a gentle tactical theme hint for a puzzle without revealing the moves.
+    Tracks hint usage in ai_puzzle_attempts.
+    """
+    stmt = select(Puzzle).where(Puzzle.id == puzzle_id)
+    res = await db.execute(stmt)
+    puzzle = res.scalar_one_or_none()
+    if not puzzle:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thế cờ không tồn tại.")
+
+    await record_puzzle_attempt(
+        db=db,
+        user_id=current_user.id,
+        puzzle_id=puzzle_id,
+        is_correct=False,
+        session_id=session_id,
+        increment_attempt=False,
+        increment_hint=True,
+    )
+
+    theme_name = puzzle.puzzle_type or (puzzle.tags[0] if puzzle.tags else "Chiến thuật")
+    return {
+        "puzzle_id": str(puzzle.id),
+        "theme": theme_name,
+        "hint": f"Gợi ý: Bài tập này xoay quanh đòn chiến thuật '{theme_name}'. Con hãy quan sát kỹ đường đi của các quân cờ!",
+    }
+
+
+@router.post("/puzzles/{puzzle_id}/solution", response_model=PuzzleSolutionResponse)
+async def view_solution(
+    puzzle_id: uuid.UUID,
+    session_id: Optional[uuid.UUID] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Reveal official solution moves only when explicitly requested by student.
+    """
+    try:
+        res = await get_puzzle_solution(
+            db=db,
+            puzzle_id=puzzle_id,
+            user_id=current_user.id,
+            session_id=session_id,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/puzzles/{puzzle_id}/explain", response_model=PuzzleExplainResponse)
+async def explain_solution(
+    puzzle_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate an AI tactical explanation grounded strictly on the DB solution line.
+    """
+    try:
+        explanation = await explain_puzzle_solution(db=db, puzzle_id=puzzle_id)
+        return PuzzleExplainResponse(puzzle_id=puzzle_id, explanation=explanation)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
