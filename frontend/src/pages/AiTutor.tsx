@@ -26,6 +26,7 @@ import api from '../lib/api';
 import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/authStore';
 import BoardPreview, { type BoardData } from '../components/ai/BoardPreview';
+import PuzzleCard, { type PuzzleData } from '../components/ai/PuzzleCard';
 import useSpeechInput from '../hooks/useSpeechInput';
 
 interface ChatSession {
@@ -39,14 +40,16 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   board_data?: BoardData | null;
+  puzzle_data?: PuzzleData[] | null;
   created_at?: string;
 }
 
 const QUICK_SUGGESTIONS = [
+  'Cho em 2 bài tập về đòn Ghim quân',
+  'Em muốn giải thế cờ chiếu hết 2 nước',
   'Giải thích đòn chiếu mở và cho ví dụ',
   'Khai cuộc Ý đi như thế nào?',
   'Tiểu sử Magnus Carlsen',
-  'Cách phòng thủ trước đòn Scholar\'s Mate (chiếu hết 4 nước)',
 ];
 
 const SUPPORTED_VOICES = [
@@ -305,6 +308,7 @@ export const AiTutor: React.FC = () => {
       role: 'assistant',
       content: '',
       board_data: null,
+      puzzle_data: null,
       created_at: new Date().toISOString(),
     };
 
@@ -389,6 +393,18 @@ export const AiTutor: React.FC = () => {
                     updated[lastIdx] = {
                       ...updated[lastIdx],
                       board_data: data.board_data,
+                    };
+                  }
+                  return updated;
+                });
+              } else if (currentEvent === 'puzzles' && data.puzzles) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      puzzle_data: data.puzzles,
                     };
                   }
                   return updated;
@@ -866,6 +882,15 @@ export const AiTutor: React.FC = () => {
                     {/* Interactive Chessboard (if valid board_data exists) */}
                     {!isUser && msg.board_data && (
                       <BoardPreview data={msg.board_data} />
+                    )}
+
+                    {/* Interactive Puzzle Cards (if puzzle_data exists) */}
+                    {!isUser && msg.puzzle_data && msg.puzzle_data.length > 0 && (
+                      <div className="flex flex-wrap gap-3 mt-3 w-full">
+                        {msg.puzzle_data.map((p) => (
+                          <PuzzleCard key={p.id} puzzle={p} sessionId={currentSessionId} />
+                        ))}
+                      </div>
                     )}
                   </div>
 
