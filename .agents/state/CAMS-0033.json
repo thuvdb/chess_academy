@@ -1,0 +1,31 @@
+{
+  "task_id": "CAMS-0033",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "Chỉnh giao diện trang Hỏi đáp AI (/ai-tutor) và sidebar menu (CAMS-AI-05)",
+  "specialists_invoked": [
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Chỉ sửa code frontend liên quan đến AiTutor, AppLayout, Sidebar và CSS styling thanh cuộn.",
+    "Không thay đổi logic nghiệp vụ, backend contract, hoặc cấu trúc các trang khác."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "6b7fecc feat(ai-tutor): CAMS-0033 them nut thu gon lich su va ho tro mobile drawer",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-21T15:49:00+07:00"
+}
