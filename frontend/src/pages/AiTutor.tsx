@@ -92,6 +92,9 @@ export const AiTutor: React.FC = () => {
     autoSpeakRef.current = autoSpeak;
   }, [autoSpeak]);
 
+  // Base text when recording started (so existing text is not wiped out)
+  const speechBaseInputRef = useRef<string>('');
+
   // STT hook
   const {
     isSupported: isSpeechSupported,
@@ -101,12 +104,25 @@ export const AiTutor: React.FC = () => {
   } = useSpeechInput({
     lang: 'vi-VN',
     onTranscript: (spokenText) => {
-      setInputMessage(spokenText);
+      const base = speechBaseInputRef.current;
+      if (base && base.trim().length > 0) {
+        const separator = base.endsWith(' ') ? '' : ' ';
+        setInputMessage(`${base}${separator}${spokenText.trimStart()}`);
+      } else {
+        setInputMessage(spokenText);
+      }
     },
     onError: (err) => {
       toast.error(err);
     },
   });
+
+  const handleToggleListening = () => {
+    if (!isListening) {
+      speechBaseInputRef.current = inputMessage;
+    }
+    toggleListening();
+  };
 
   // Collapse state for history panel (persisted in localStorage)
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState<boolean>(() => {
@@ -260,6 +276,8 @@ export const AiTutor: React.FC = () => {
     if (isStreaming && abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    stopListening();
+    speechBaseInputRef.current = '';
     setCurrentSessionId(null);
     setMessages([]);
     setErrorMessage(null);
@@ -293,6 +311,7 @@ export const AiTutor: React.FC = () => {
     const text = (textToSend || inputMessage).trim();
     if (!text || isStreaming) return;
 
+    speechBaseInputRef.current = '';
     setInputMessage('');
     setErrorMessage(null);
 
@@ -925,10 +944,10 @@ export const AiTutor: React.FC = () => {
             className="flex items-center gap-2 max-w-4xl mx-auto relative"
           >
             {/* Microphone Button (Speech to Text) */}
-            {isSpeechSupported && (
+            {isSpeechSupported ? (
               <button
                 type="button"
-                onClick={toggleListening}
+                onClick={handleToggleListening}
                 disabled={isStreaming}
                 className={`p-3 rounded-xl transition shrink-0 ${
                   isListening
@@ -939,6 +958,16 @@ export const AiTutor: React.FC = () => {
                 aria-label={isListening ? 'Dừng thu âm' : 'Nói câu hỏi'}
               >
                 {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="p-3 rounded-xl transition shrink-0 bg-slate-800/40 text-slate-600 cursor-not-allowed opacity-50"
+                title="Trình duyệt không hỗ trợ nhận diện giọng nói (SpeechRecognition). Vui lòng dùng Google Chrome trên máy tính."
+                aria-label="Trình duyệt không hỗ trợ micro"
+              >
+                <MicOff className="w-4 h-4" />
               </button>
             )}
 

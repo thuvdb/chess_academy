@@ -1,0 +1,31 @@
+{
+  "task_id": "CAMS-0054",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix speech recognition transcript update and error handling in AI Tutor (CAMS-AI-10)",
+  "specialists_invoked": [
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Web Speech API SpeechRecognition is available in Google Chrome / Chromium-based browsers.",
+    "Fix focuses on frontend hook useSpeechInput and AiTutor input component without breaking other features."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "d3202e1",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-22T12:02:30+07:00"
+}

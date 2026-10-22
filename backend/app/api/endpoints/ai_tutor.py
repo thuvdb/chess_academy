@@ -4,7 +4,8 @@ CAMS AI Tutor Router — REST & SSE Endpoints for AI Chess Tutor.
 import json
 import logging
 import uuid
-from typing import Optional
+from typing import Any, Optional
+
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
