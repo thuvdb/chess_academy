@@ -5,7 +5,7 @@ Supports Google Gemini via google-genai SDK and Mock provider for testing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
+from typing import AsyncGenerator, Awaitable, Callable, Optional
 
 from app.core.config import settings
 
@@ -46,10 +46,60 @@ def get_search_puzzles_tool():
 
 
 class AIProviderError(Exception):
-    """Safe exception for AI provider failures without leaking sensitive credentials."""
-    def __init__(self, message: str = "Dịch vụ AI đang gián đoạn hoặc quá tải. Vui lòng thử lại sau."):
+    """Safe exception for AI provider failures with structured error code and retry eligibility."""
+    def __init__(
+        self,
+        message: str = "Dịch vụ AI đang gián đoạn hoặc quá tải. Vui lòng thử lại sau.",
+        code: str = "other",
+        retryable: bool = False,
+    ):
         self.message = message
+        self.code = code  # "overloaded" | "quota" | "timeout" | "auth" | "other"
+        self.retryable = retryable
         super().__init__(self.message)
+
+
+def classify_gemini_error(err_msg: str, err_type: str = "") -> tuple[str, str, bool]:
+    """
+    Classify Gemini API errors into user-friendly message, structured error code, and retry eligibility.
+    Codes: 'overloaded' | 'quota' | 'timeout' | 'auth' | 'other'
+    """
+    lower = err_msg.lower()
+    if (
+        "503" in err_msg
+        or "unavailable" in lower
+        or "high demand" in lower
+        or "overloaded" in lower
+        or "experiencing high demand" in lower
+    ):
+        return (
+            "Hệ thống AI đang quá tải do lượng truy cập cao. Vui lòng thử lại sau vài giây.",
+            "overloaded",
+            True,
+        )
+    if "429" in err_msg or "resource_exhausted" in lower or "quota" in lower:
+        return (
+            "Hệ thống AI đang tạm thời vượt hạn ngạch (quota) của dịch vụ. Vui lòng thử lại sau vài phút.",
+            "quota",
+            True,
+        )
+    if "timeout" in lower or "deadline" in lower or err_type == "TimeoutError":
+        return (
+            "Yêu cầu gửi đến AI bị quá thời gian chờ (timeout). Vui lòng thử lại.",
+            "timeout",
+            True,
+        )
+    if "api_key_invalid" in lower or ("400" in err_msg and "key" in lower):
+        return (
+            "Khóa API dịch vụ AI chưa hợp lệ hoặc chưa được kích hoạt.",
+            "auth",
+            False,
+        )
+    return (
+        "Dịch vụ AI đang gặp sự cố kết nối. Vui lòng thử lại sau.",
+        "other",
+        False,
+    )
 
 
 class LLMProvider(ABC):
@@ -181,7 +231,13 @@ class GeminiLLMProvider(LLMProvider):
 
         except asyncio.TimeoutError:
             logger.warning("Gemini API call timed out after configured threshold.")
-            raise AIProviderError("Yêu cầu gửi đến AI bị quá thời gian chờ (timeout). Vui lòng thử lại.")
+            raise AIProviderError(
+                "Yêu cầu gửi đến AI bị quá thời gian chờ (timeout). Vui lòng thử lại.",
+                code="timeout",
+                retryable=True,
+            )
+        except AIProviderError:
+            raise
         except Exception as e:
             err_type = type(e).__name__
             err_msg = str(e)
@@ -189,12 +245,8 @@ class GeminiLLMProvider(LLMProvider):
             safe_err = err_msg.replace(self.api_key, "[REDACTED_API_KEY]") if self.api_key else err_msg
             logger.error("Gemini API streaming error (%s): %s", err_type, safe_err)
 
-            if "429" in safe_err or "RESOURCE_EXHAUSTED" in safe_err or "quota" in safe_err.lower():
-                raise AIProviderError("Hệ thống AI đang tạm thời vượt hạn ngạch (quota) của dịch vụ. Vui lòng thử lại sau vài phút.")
-            if "API_KEY_INVALID" in safe_err or "400" in safe_err and "key" in safe_err.lower():
-                raise AIProviderError("Khóa API dịch vụ AI chưa hợp lệ hoặc chưa được kích hoạt.")
-            
-            raise AIProviderError("Dịch vụ AI đang gặp sự cố kết nối. Vui lòng thử lại sau.")
+            msg, code, retryable = classify_gemini_error(safe_err, err_type=err_type)
+            raise AIProviderError(msg, code=code, retryable=retryable)
 
 
 class MockLLMProvider(LLMProvider):

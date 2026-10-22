@@ -1,0 +1,33 @@
+{
+  "task_id": "CAMS-0056",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Graceful Gemini overload error handling (503/429), exponential backoff retry before token emission, clean SSE stream closure, and UI retry",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Single Gemini model is used (fallback model omitted per user request).",
+    "Retries before any token is sent will use exponential backoff with jitter up to ~20s total cap.",
+    "Stream closes gracefully with an SSE error event and cleans up empty assistant messages on frontend."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "bb088fc",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-22T17:51:00+07:00"
+}

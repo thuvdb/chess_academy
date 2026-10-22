@@ -153,3 +153,27 @@ async def set_cached_ai_response(
         await redis.setex(cache_key, expire_seconds, json.dumps(data))
     except Exception as e:
         logger.warning("Redis query cache set error: %s", e)
+
+
+async def refund_ai_tutor_rate_limit(user_id: uuid.UUID) -> None:
+    """
+    Refund 1 request count if AI request failed due to provider overload or outage.
+    Prevents penalizing the student for external Google API failures.
+    """
+    try:
+        redis = get_redis_client()
+        if redis is None:
+            return
+
+        minute_key = f"cams:ratelimit:ai_tutor:{user_id}:min"
+        day_key = f"cams:ratelimit:ai_tutor:{user_id}:day"
+
+        min_val = await redis.decr(minute_key)
+        if min_val < 0:
+            await redis.set(minute_key, 0)
+
+        day_val = await redis.decr(day_key)
+        if day_val < 0:
+            await redis.set(day_key, 0)
+    except Exception as e:
+        logger.warning("Redis rate limit refund error: %s", e)

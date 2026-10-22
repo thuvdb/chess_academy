@@ -1,8 +1,11 @@
 """
 CAMS AI Tutor Router — REST & SSE Endpoints for AI Chess Tutor.
 """
+import asyncio
 import json
 import logging
+import random
+import time
 import uuid
 from typing import Any, Optional
 
@@ -19,6 +22,7 @@ from app.core.redis import (
     check_ai_tutor_rate_limit,
     check_ai_tutor_tts_rate_limit,
     get_cached_ai_response,
+    refund_ai_tutor_rate_limit,
     set_cached_ai_response,
 )
 from app.models.ai_tutor import ChatMessage, ChatSession
@@ -271,28 +275,84 @@ async def chat_stream(
                 }
             return {"error": f"Unknown tool: {name}"}
 
-        # Call LLM Provider
+        # Call LLM Provider with retry & graceful error handling
         provider = get_llm_provider()
         accumulated_text = ""
+        has_emitted_tokens = False
 
-        try:
-            async for chunk in provider.stream_chat(
-                messages=history_payload,
-                system_instruction=AI_TUTOR_SYSTEM_PROMPT,
-                max_tokens=settings.AI_TUTOR_MAX_TOKENS,
-                tool_handler=handle_tool_call,
-            ):
-                accumulated_text += chunk
-                # Yield text chunk to client
-                yield f"event: message\ndata: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        max_retries = 3
+        total_timeout_limit = 20.0
+        start_time = time.monotonic()
+        stream_completed = False
 
-        except AIProviderError as e:
-            logger.warning("AI Provider Error during stream: %s", e.message)
-            yield f"event: error\ndata: {json.dumps({'error': e.message}, ensure_ascii=False)}\n\n"
-            return
-        except Exception as e:
-            logger.error("Unexpected error in AI Tutor stream: %s", e)
-            yield f"event: error\ndata: {json.dumps({'error': 'Có lỗi bất ngờ khi trao đổi với AI. Vui lòng thử lại.'}, ensure_ascii=False)}\n\n"
+        for attempt in range(1, max_retries + 1):
+            try:
+                async for chunk in provider.stream_chat(
+                    messages=history_payload,
+                    system_instruction=AI_TUTOR_SYSTEM_PROMPT,
+                    max_tokens=settings.AI_TUTOR_MAX_TOKENS,
+                    tool_handler=handle_tool_call,
+                ):
+                    has_emitted_tokens = True
+                    accumulated_text += chunk
+                    # Yield text chunk to client
+                    yield f"event: message\ndata: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+
+                stream_completed = True
+                break
+
+            except AIProviderError as e:
+                elapsed = time.monotonic() - start_time
+                logger.warning(
+                    "AI Provider Error during stream (attempt %d/%d, elapsed %.2fs): [%s] %s",
+                    attempt,
+                    max_retries,
+                    elapsed,
+                    e.code,
+                    e.message,
+                )
+
+                # Retry only if no tokens emitted yet, error is retryable, attempts remain, and under 20s cap
+                if (
+                    not has_emitted_tokens
+                    and e.retryable
+                    and attempt < max_retries
+                    and elapsed < total_timeout_limit
+                ):
+                    backoff = 2 ** (attempt - 1)  # 1s, 2s, 4s
+                    jitter = random.uniform(0.1, 0.4)
+                    delay = min(backoff + jitter, max(0.1, total_timeout_limit - elapsed))
+                    logger.info("Retrying AI request in %.2fs (attempt %d/%d)...", delay, attempt + 1, max_retries)
+                    await asyncio.sleep(delay)
+                    continue
+
+                # Refund rate limit so student is not penalized for external Gemini overloads/quotas
+                if e.code in ("overloaded", "quota"):
+                    await refund_ai_tutor_rate_limit(current_user.id)
+
+                error_payload = {
+                    "error": e.message,
+                    "code": e.code,
+                    "retryable": not has_emitted_tokens and e.retryable,
+                }
+                done_payload = {"error": True, "code": e.code}
+                yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
+                yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
+                return
+
+            except Exception as e:
+                logger.error("Unexpected error in AI Tutor stream (attempt %d/%d): %s", attempt, max_retries, e)
+                error_payload = {
+                    "error": "Có lỗi bất ngờ khi trao đổi với AI. Vui lòng thử lại sau.",
+                    "code": "other",
+                    "retryable": not has_emitted_tokens,
+                }
+                done_payload = {"error": True, "code": "other"}
+                yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
+                yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
+                return
+
+        if not stream_completed:
             return
 
         # 5. Extract & validate board illustration
@@ -304,27 +364,29 @@ async def chat_stream(
         if retrieved_puzzles:
             yield f"event: puzzles\ndata: {json.dumps({'puzzles': retrieved_puzzles}, ensure_ascii=False)}\n\n"
 
-        # 6. Save assistant message to Database & Cache
-        async with async_session_factory() as db:
-            asst_msg = ChatMessage(
-                session_id=session_id,
-                role="assistant",
-                content=clean_text,
-                board_data=board_data,
+        # 6. Save assistant message to Database & Cache (only if non-empty content)
+        msg_id = None
+        if clean_text:
+            async with async_session_factory() as db:
+                asst_msg = ChatMessage(
+                    session_id=session_id,
+                    role="assistant",
+                    content=clean_text,
+                    board_data=board_data,
+                    puzzle_data=retrieved_puzzles if retrieved_puzzles else None,
+                )
+                db.add(asst_msg)
+                await db.commit()
+                await db.refresh(asst_msg)
+                msg_id = str(asst_msg.id)
+
+            # Cache the validated response
+            await set_cached_ai_response(
+                request.message,
+                clean_text,
+                board_data,
                 puzzle_data=retrieved_puzzles if retrieved_puzzles else None,
             )
-            db.add(asst_msg)
-            await db.commit()
-            await db.refresh(asst_msg)
-            msg_id = str(asst_msg.id)
-
-        # Cache the validated response
-        await set_cached_ai_response(
-            request.message,
-            clean_text,
-            board_data,
-            puzzle_data=retrieved_puzzles if retrieved_puzzles else None,
-        )
 
         # 7. Complete SSE stream
         yield f"event: done\ndata: {json.dumps({'session_id': str(session_id), 'message_id': msg_id})}\n\n"

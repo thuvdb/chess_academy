@@ -68,6 +68,8 @@ export const AiTutor: React.FC = () => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastFailedQuestion, setLastFailedQuestion] = useState<string | null>(null);
+  const [isRetryableError, setIsRetryableError] = useState<boolean>(false);
 
   // Audio / TTS state
   const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
@@ -315,6 +317,8 @@ export const AiTutor: React.FC = () => {
     speechBaseInputRef.current = '';
     setInputMessage('');
     setErrorMessage(null);
+    setIsRetryableError(false);
+    setLastFailedQuestion(text);
 
     // Optimistically append user message
     const tempUserMsg: ChatMessage = {
@@ -430,6 +434,22 @@ export const AiTutor: React.FC = () => {
                   return updated;
                 });
               } else if (currentEvent === 'done') {
+                if (data.error) {
+                  // Stream gracefully closed following error
+                  setIsRetryableError(true);
+                  // Remove empty assistant placeholder if no content was received
+                  setMessages((prev) => {
+                    const last = prev[prev.length - 1];
+                    if (last && last.role === 'assistant' && !last.content?.trim()) {
+                      return prev.slice(0, -1);
+                    }
+                    return prev;
+                  });
+                } else {
+                  setLastFailedQuestion(null);
+                  setIsRetryableError(false);
+                }
+
                 if (data.session_id && !currentSessionId) {
                   setCurrentSessionId(data.session_id);
                   fetchSessions();
@@ -455,7 +475,22 @@ export const AiTutor: React.FC = () => {
                   }
                 }
               } else if (currentEvent === 'error') {
-                setErrorMessage(data.error || 'Có lỗi xảy ra trong quá trình trao đổi.');
+                const isOverloaded = data.code === 'overloaded' || data.error?.toLowerCase().includes('quá tải');
+                const friendlyMsg = isOverloaded
+                  ? 'AI đang quá tải do lượng truy cập cao. Vui lòng bấm Thử lại sau vài giây.'
+                  : (data.error || 'Có lỗi xảy ra trong quá trình trao đổi.');
+
+                setErrorMessage(friendlyMsg);
+                setIsRetryableError(Boolean(data.retryable ?? true));
+
+                // Clean up empty assistant placeholder
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last && last.role === 'assistant' && !last.content?.trim()) {
+                    return prev.slice(0, -1);
+                  }
+                  return prev;
+                });
               }
             } catch (parseErr) {
               console.warn('Failed to parse SSE JSON chunk:', jsonStr);
@@ -467,13 +502,42 @@ export const AiTutor: React.FC = () => {
       if (err.name === 'AbortError') {
         console.log('Stream stopped by user.');
       } else {
-        const msg = err.message || 'Lỗi kết nối đến Huấn luyện viên AI.';
-        setErrorMessage(msg);
-        toast.error(msg);
+        const isNetworkOrDrop =
+          err.message?.includes('fetch') ||
+          err.message?.includes('Network') ||
+          err.message?.includes('chunked') ||
+          err.message?.includes('ERR_INCOMPLETE') ||
+          err.name === 'TypeError';
+
+        const displayMsg = isNetworkOrDrop
+          ? 'AI đang quá tải hoặc kết nối bị gián đoạn. Vui lòng bấm Thử lại sau vài giây.'
+          : (err.message || 'Lỗi kết nối đến Huấn luyện viên AI.');
+
+        setErrorMessage(displayMsg);
+        setIsRetryableError(true);
+        toast.error(displayMsg);
+
+        // Remove empty assistant placeholder
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && !last.content?.trim()) {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
       }
     } finally {
       setIsStreaming(false);
       abortControllerRef.current = null;
+    }
+  };
+
+  const handleRetryLastQuestion = () => {
+    if (lastFailedQuestion && !isStreaming) {
+      const q = lastFailedQuestion;
+      setErrorMessage(null);
+      setIsRetryableError(false);
+      handleSendMessage(q);
     }
   };
 
@@ -930,11 +994,24 @@ export const AiTutor: React.FC = () => {
             })
           )}
 
-          {/* Rate limit or error alert */}
+          {/* Rate limit or error alert with Retry button */}
           {errorMessage && (
-            <div className="p-3 bg-red-950/50 border border-red-800/60 rounded-xl text-red-200 text-xs flex items-center gap-2 max-w-xl mx-auto">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-3 bg-red-950/70 border border-red-800/80 rounded-xl text-red-200 text-xs flex items-center justify-between gap-3 max-w-xl mx-auto shadow-lg shadow-red-950/40">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+              {lastFailedQuestion && isRetryableError && !isStreaming && (
+                <button
+                  type="button"
+                  onClick={handleRetryLastQuestion}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-800/80 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition shrink-0 border border-red-600/50 cursor-pointer shadow-sm active:scale-95"
+                  title="Thử lại câu hỏi vừa gửi"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Thử lại</span>
+                </button>
+              )}
             </div>
           )}
 
