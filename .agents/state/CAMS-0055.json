@@ -1,0 +1,32 @@
+{
+  "task_id": "CAMS-0055",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Hide <board> tags from AI Tutor message display in frontend and clean content in backend (CAMS-AI-08)",
+  "specialists_invoked": [
+    "cams-frontend",
+    "cams-backend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Board visual rendering relies on board_data parsed from full response, stripping <board> tags only affects message text bubble.",
+    "Streaming messages should hide partial <board tag to avoid flashing."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "03928ab",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-22T14:43:00+07:00"
+}

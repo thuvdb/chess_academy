@@ -28,6 +28,7 @@ import { useAuthStore } from '../store/authStore';
 import BoardPreview, { type BoardData } from '../components/ai/BoardPreview';
 import PuzzleCard, { type PuzzleData } from '../components/ai/PuzzleCard';
 import useSpeechInput from '../hooks/useSpeechInput';
+import { stripBoardTags } from '../utils/aiTutor';
 
 interface ChatSession {
   id: string;
@@ -442,6 +443,7 @@ export const AiTutor: React.FC = () => {
                       updated[lastIdx] = {
                         ...updated[lastIdx],
                         id: data.message_id,
+                        content: stripBoardTags(updated[lastIdx].content, false),
                       };
                     }
                     return updated;
@@ -851,7 +853,12 @@ export const AiTutor: React.FC = () => {
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       ) : (
                         <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800">
-                          <ReactMarkdown>{msg.content || (isStreaming && index === messages.length - 1 ? '...' : '')}</ReactMarkdown>
+                          <ReactMarkdown>
+                            {stripBoardTags(
+                              msg.content || '',
+                              isStreaming && index === messages.length - 1
+                            ) || (isStreaming && index === messages.length - 1 ? '...' : '')}
+                          </ReactMarkdown>
                           {isStreaming && index === messages.length - 1 && (
                             <span className="inline-block w-2 h-4 ml-1 bg-blue-400 animate-pulse align-middle" />
                           )}

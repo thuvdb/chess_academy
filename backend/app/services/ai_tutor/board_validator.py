@@ -12,7 +12,7 @@ import chess
 
 logger = logging.getLogger(__name__)
 
-BOARD_BLOCK_REGEX = re.compile(r"<board>(.*?)</board>", re.DOTALL | re.IGNORECASE)
+BOARD_BLOCK_REGEX = re.compile(r"<board(?:\s+[^>]*)?>([\s\S]*?)</board>", re.IGNORECASE)
 
 
 def validate_board_moves(payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -93,13 +93,19 @@ def extract_and_validate_board(raw_text: str) -> tuple[str, dict[str, Any] | Non
     Extracts the <board>...</board> tag from the raw AI response text,
     validates the moves using python-chess, and returns (clean_text, board_data).
     If validation fails or tag is malformed, board_data will be None.
+    Removes all <board>...</board> tags from clean_text and normalizes newlines.
     """
+    if not raw_text:
+        return "", None
+
     match = BOARD_BLOCK_REGEX.search(raw_text)
+    clean_text = BOARD_BLOCK_REGEX.sub("", raw_text)
+    clean_text = re.sub(r"\n{3,}", "\n\n", clean_text).strip()
+
     if not match:
-        return raw_text, None
+        return clean_text, None
 
     board_json_str = match.group(1).strip()
-    clean_text = BOARD_BLOCK_REGEX.sub("", raw_text).strip()
 
     try:
         payload = json.loads(board_json_str)

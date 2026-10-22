@@ -135,3 +135,37 @@ def test_extract_and_validate_board_corrupted_json():
     clean, board = extract_and_validate_board(raw)
     assert "<board>" not in clean
     assert board is None
+
+
+def test_extract_and_validate_board_multiline_tag():
+    """Verify <board> tag with newline before closing </board> is stripped cleanly."""
+    raw = (
+        "Con hãy quan sát thế trận sau 3 nước đi đầu tiên nhé:\n"
+        '<board>{"moves":["e4","e5","Nf3","Nc6","Bc4"],"caption":"Thế cờ Khai cuộc Italia sau nước đi 3. Bc4"}\n'
+        "</board>\n"
+        "Con đã từng thử chơi khai cuộc Italia trong ván đấu thực tế bao giờ chưa?"
+    )
+    clean, board = extract_and_validate_board(raw)
+    assert "<board>" not in clean
+    assert "</board>" not in clean
+    assert '{"moves"' not in clean
+    assert "Con hãy quan sát thế trận sau 3 nước đi đầu tiên nhé:" in clean
+    assert "Con đã từng thử chơi khai cuộc Italia" in clean
+    assert board is not None
+    assert board["total_moves"] == 5
+
+
+def test_extract_and_validate_board_multiple_tags():
+    """Verify multiple board tags are stripped from text."""
+    raw = (
+        'Thế 1: <board>{"moves":["e4"]}</board>\n\n'
+        'Thế 2: <BOARD class="test">\n{"moves":["d4"]}\n</BOARD>\n'
+        "Kết thúc."
+    )
+    clean, board = extract_and_validate_board(raw)
+    assert "<board" not in clean.lower()
+    assert "</board" not in clean.lower()
+    assert "Thế 1:" in clean
+    assert "Thế 2:" in clean
+    assert "Kết thúc." in clean
+    assert "\n\n\n" not in clean

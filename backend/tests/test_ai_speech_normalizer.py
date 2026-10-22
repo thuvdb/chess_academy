@@ -20,6 +20,27 @@ def test_clean_markdown_strips_board_tag():
     assert "Chúc con học tốt!" in cleaned
 
 
+def test_clean_markdown_strips_multiline_board_tag():
+    """Verify multiline <board> tags with newlines before </board> are stripped."""
+    text = (
+        "Quan sát thế trận:\n"
+        '<board>{"moves":["e4","e5","Nf3","Nc6","Bc4"]}\n</board>\n'
+        "Con thấy thế nào?"
+    )
+    cleaned = clean_markdown_for_speech(text)
+    assert "<board" not in cleaned.lower()
+    assert "</board" not in cleaned.lower()
+    assert '{"moves"' not in cleaned
+    assert "Quan sát thế trận:" in cleaned
+    assert "Con thấy thế nào?" in cleaned
+
+    # Also verify prepare_text_for_speech
+    spoken = prepare_text_for_speech(text)
+    assert "<board" not in spoken.lower()
+    assert "Quan sát thế trận:" in spoken
+    assert "Con thấy thế nào?" in spoken
+
+
 def test_clean_markdown_formatting():
     """Verify headers, code blocks, bold/italics, and links are stripped cleanly."""
     text = (

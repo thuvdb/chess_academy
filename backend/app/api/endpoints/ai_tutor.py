@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.core.config import settings
@@ -28,13 +27,10 @@ from app.models.user import User
 from app.schemas.ai_tutor import (
     ChatMessageOut,
     ChatRequest,
-    ChatSessionDetailOut,
     ChatSessionOut,
-    OpponentMoveData,
     PuzzleCheckRequest,
     PuzzleCheckResponse,
     PuzzleExplainResponse,
-    PuzzleSolutionMove,
     PuzzleSolutionResponse,
     TTSRequest,
 )

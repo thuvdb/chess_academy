@@ -5,7 +5,7 @@ and maps chess algebraic notation (SAN) into natural Vietnamese speech.
 """
 import re
 
-BOARD_TAG_REGEX = re.compile(r"<board>.*?</board>", re.DOTALL | re.IGNORECASE)
+BOARD_TAG_REGEX = re.compile(r"<board(?:\s+[^>]*)?>[\s\S]*?</board>", re.IGNORECASE)
 
 # Mapping piece abbreviations to Vietnamese words
 CHESS_PIECE_NAMES = {
@@ -31,6 +31,7 @@ def clean_markdown_for_speech(text: str) -> str:
 
     # 1. Remove <board>...</board>
     cleaned = BOARD_TAG_REGEX.sub("", text)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
 
     # 2. Remove code blocks ```...``` and inline code `...`
     cleaned = re.sub(r"```[\s\S]*?```", " ", cleaned)
