@@ -50,3 +50,5 @@ backend/uploads/*
 docker-compose.override.yml
 docker-compose.*.override.yml
 !docker-compose.override.yml.example
+
+backend/storage/tts_cache/
