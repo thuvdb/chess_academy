@@ -37,6 +37,7 @@ class UserAdminUpdate(BaseModel):
 
 class UserRead(UserBase):
     id: uuid.UUID
+    email: str  # Override EmailStr from UserBase to prevent ResponseValidationError on .test or custom local domains
     center_id: uuid.UUID | None = None
     center_name: str | None = None
     is_active: bool

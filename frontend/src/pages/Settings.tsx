@@ -16,10 +16,18 @@ import {
   ToggleLeft,
   ToggleRight,
   Sparkles,
+  MapPin,
+  Phone,
+  Mail,
+  Edit2,
+  Trash2,
+  Search,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import { settingsApi, type SettingItem, type CatalogItem } from '../lib/settingsApi';
+import { centerApi, type Center, type CenterCreatePayload } from '../lib/centerApi';
 
 export default function Settings() {
   const { user, setUser } = useAuthStore();
@@ -30,13 +38,28 @@ export default function Settings() {
 
   // Determine initial active tab based on role
   const defaultTab = isSuperAdmin
-    ? 'general'
+    ? 'centers'
     : isCenterAdmin
     ? 'center_info'
     : 'profile';
 
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [loading, setLoading] = useState(false);
+
+  // Centers Management State (Super Admin)
+  const [centersList, setCentersList] = useState<Center[]>([]);
+  const [centersLoading, setCentersLoading] = useState(false);
+  const [centerSearch, setCenterSearch] = useState('');
+  const [isCenterModalOpen, setIsCenterModalOpen] = useState(false);
+  const [editingCenter, setEditingCenter] = useState<Center | null>(null);
+  const [centerFormName, setCenterFormName] = useState('');
+  const [centerFormAddress, setCenterFormAddress] = useState('');
+  const [centerFormPhone, setCenterFormPhone] = useState('');
+  const [centerFormEmail, setCenterFormEmail] = useState('');
+  const [centerFormFacebook, setCenterFormFacebook] = useState('');
+  const [centerFormPlan, setCenterFormPlan] = useState('free');
+  const [centerSaving, setCenterSaving] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   // Profile form state
   const [profileFullName, setProfileFullName] = useState(user?.full_name || '');
@@ -156,10 +179,27 @@ export default function Settings() {
     }
   };
 
+  // Load centers list (Super Admin)
+  const fetchCentersList = async (searchQuery = '') => {
+    if (!isSuperAdmin) return;
+    try {
+      setCentersLoading(true);
+      const data = await centerApi.getCenters(searchQuery);
+      setCentersList(data);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Không thể tải danh sách trung tâm');
+    } finally {
+      setCentersLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isStaff) {
       fetchSettings();
       fetchCatalogs();
+    }
+    if (isSuperAdmin) {
+      fetchCentersList();
     }
     if (user?.center_name) {
       setCenterInfo({
@@ -168,6 +208,96 @@ export default function Settings() {
       });
     }
   }, [user]);
+
+  // Center CRUD Handlers
+  const handleOpenCreateCenter = () => {
+    setEditingCenter(null);
+    setCenterFormName('');
+    setCenterFormAddress('');
+    setCenterFormPhone('');
+    setCenterFormEmail('');
+    setCenterFormFacebook('');
+    setCenterFormPlan('free');
+    setIsCenterModalOpen(true);
+  };
+
+  const handleOpenEditCenter = (center: Center) => {
+    setEditingCenter(center);
+    setCenterFormName(center.name);
+    setCenterFormAddress(center.address || '');
+    setCenterFormPhone(center.phone || '');
+    setCenterFormEmail(center.email || '');
+    setCenterFormFacebook(center.facebook_page_url || '');
+    setCenterFormPlan(center.subscription_plan || 'free');
+    setIsCenterModalOpen(true);
+  };
+
+  const handleSaveCenter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!centerFormName.trim()) {
+      toast.error('Tên trung tâm không được để trống');
+      return;
+    }
+
+    try {
+      setCenterSaving(true);
+      const payload: CenterCreatePayload = {
+        name: centerFormName.trim(),
+        address: centerFormAddress.trim() || undefined,
+        phone: centerFormPhone.trim() || undefined,
+        email: centerFormEmail.trim() || undefined,
+        facebook_page_url: centerFormFacebook.trim() || undefined,
+        subscription_plan: centerFormPlan,
+      };
+
+      if (editingCenter) {
+        await centerApi.updateCenter(editingCenter.id, payload);
+        toast.success(`Đã cập nhật trung tâm "${payload.name}" thành công`);
+      } else {
+        await centerApi.createCenter(payload);
+        toast.success(`Đã tạo trung tâm "${payload.name}" thành công`);
+      }
+      setIsCenterModalOpen(false);
+      await fetchCentersList(centerSearch);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Lưu thông tin trung tâm thất bại');
+    } finally {
+      setCenterSaving(false);
+    }
+  };
+
+  const handleDeleteCenter = async (center: Center) => {
+    if (center.members_count > 0 || center.classes_count > 0) {
+      toast.error(`Trung tâm đang có ${center.members_count} thành viên và ${center.classes_count} lớp học, không thể xóa.`);
+      return;
+    }
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa trung tâm "${center.name}"? Thao tác này không thể hoàn tác.`)) {
+      return;
+    }
+    try {
+      await centerApi.deleteCenter(center.id);
+      toast.success(`Đã xóa trung tâm "${center.name}" thành công`);
+      await fetchCentersList(centerSearch);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Xóa trung tâm thất bại');
+    }
+  };
+
+  const handleCleanupTestCenters = async () => {
+    if (!window.confirm('Hệ thống sẽ quét và xóa các cơ sở thử nghiệm mẫu (QA Test Center) có 0 thành viên và 0 lớp học. Bạn có chắc muốn tiếp tục?')) {
+      return;
+    }
+    try {
+      setCleaningUp(true);
+      const res = await centerApi.cleanupTestCenters();
+      toast.success(res.message);
+      await fetchCentersList(centerSearch);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Dọn dẹp trung tâm thử nghiệm thất bại');
+    } finally {
+      setCleaningUp(false);
+    }
+  };
 
   // Save single setting
   const handleSaveSetting = async (key: string) => {
@@ -296,6 +426,17 @@ export default function Settings() {
         {isSuperAdmin && (
           <>
             <button
+              onClick={() => setActiveTab('centers')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'centers'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Building className="w-4 h-4" />
+              Quản lý trung tâm
+            </button>
+            <button
               onClick={() => setActiveTab('general')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === 'general'
@@ -405,6 +546,296 @@ export default function Settings() {
           Bảo mật & Mật khẩu
         </button>
       </div>
+
+      {/* Tab: Centers Management (Super Admin) */}
+      {activeTab === 'centers' && isSuperAdmin && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Header & Actions */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Building className="w-5 h-5 text-amber-400" />
+                  Danh sách cơ sở & trung tâm ({centersList.length})
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Quản lý các cơ sở độc lập, phân quyền quản trị và cách ly dữ liệu học viện CAMS.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleCleanupTestCenters}
+                  disabled={cleaningUp}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 transition disabled:opacity-50"
+                  title="Xóa nhanh các trung tâm kiểm thử tự động (QA Test Center) trống"
+                >
+                  {cleaningUp ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  Dọn dẹp bản ghi Test
+                </button>
+
+                <button
+                  onClick={handleOpenCreateCenter}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-sm font-bold shadow-lg shadow-amber-500/20 transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  Thêm trung tâm mới
+                </button>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên trung tâm, địa chỉ, số điện thoại, email..."
+                value={centerSearch}
+                onChange={(e) => {
+                  setCenterSearch(e.target.value);
+                  fetchCentersList(e.target.value);
+                }}
+                className="w-full pl-10 pr-4 py-2 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+          </div>
+
+          {/* Centers Cards / Grid */}
+          {centersLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+            </div>
+          ) : centersList.length === 0 ? (
+            <div className="p-12 text-center bg-slate-900/40 border border-slate-800 rounded-xl space-y-3">
+              <Building className="w-12 h-12 text-slate-600 mx-auto" />
+              <p className="text-slate-400 text-sm">Chưa có trung tâm nào phù hợp.</p>
+              <button
+                onClick={handleOpenCreateCenter}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs"
+              >
+                + Tạo trung tâm đầu tiên
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {centersList.map((center) => (
+                <div
+                  key={center.id}
+                  className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700/80 shadow-lg flex flex-col justify-between space-y-4 transition"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                          {center.name}
+                        </h3>
+                        <p className="text-[11px] font-mono text-slate-500 mt-0.5">
+                          ID: {center.id}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`px-2 py-0.5 text-[11px] font-semibold rounded-full border uppercase tracking-wider ${
+                          center.subscription_plan === 'premium'
+                            ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            : center.subscription_plan === 'basic'
+                            ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                        }`}
+                      >
+                        {center.subscription_plan || 'free'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-slate-300">
+                      {center.address && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span className="truncate">{center.address}</span>
+                        </div>
+                      )}
+                      {center.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span>{center.phone}</span>
+                        </div>
+                      )}
+                      {center.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span className="truncate">{center.email}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                      <span>
+                        <strong className="text-white">{center.members_count}</strong> thành viên
+                      </span>
+                      <span>•</span>
+                      <span>
+                        <strong className="text-white">{center.classes_count}</strong> lớp học
+                      </span>
+                      <span>•</span>
+                      <span>
+                        <strong className="text-white">{center.branches_count || 1}</strong> cơ sở
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEditCenter(center)}
+                        className="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-amber-400 rounded-lg transition"
+                        title="Chỉnh sửa trung tâm"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCenter(center)}
+                        className="p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition"
+                        title="Xóa trung tâm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal Tạo / Chỉnh sửa Trung tâm */}
+          {isCenterModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Building className="w-5 h-5 text-amber-400" />
+                    {editingCenter ? 'Chỉnh sửa trung tâm' : 'Thêm trung tâm mới'}
+                  </h3>
+                  <button
+                    onClick={() => setIsCenterModalOpen(false)}
+                    className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveCenter} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Tên trung tâm / cơ sở <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: Học Viện Cờ Vua CAMS - Cơ sở 2"
+                      value={centerFormName}
+                      onChange={(e) => setCenterFormName(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Địa chỉ
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="VD: Số 123 Đường Cờ Vua, Cầu Giấy, Hà Nội"
+                      value={centerFormAddress}
+                      onChange={(e) => setCenterFormAddress(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                        Số điện thoại
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="VD: 0912345678"
+                        value={centerFormPhone}
+                        onChange={(e) => setCenterFormPhone(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                        Email liên hệ
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="contact@cams.vn"
+                        value={centerFormEmail}
+                        onChange={(e) => setCenterFormEmail(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Trang Facebook / Fanpage
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://facebook.com/..."
+                      value={centerFormFacebook}
+                      onChange={(e) => setCenterFormFacebook(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Gói cước dịch vụ
+                    </label>
+                    <select
+                      value={centerFormPlan}
+                      onChange={(e) => setCenterFormPlan(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500/50"
+                    >
+                      <option value="free">Gói Miễn phí (Free)</option>
+                      <option value="basic">Gói Cơ bản (Basic)</option>
+                      <option value="premium">Gói Cao cấp (Premium)</option>
+                    </select>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsCenterModalOpen(false)}
+                      className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={centerSaving}
+                      className="flex items-center gap-2 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-sm font-bold shadow-lg shadow-amber-500/20 transition disabled:opacity-50"
+                    >
+                      {centerSaving && (
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                      )}
+                      {editingCenter ? 'Cập nhật' : 'Tạo mới'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tab 1: General & Engine & Scanner Settings */}
       {(activeTab === 'general' || activeTab === 'engine' || activeTab === 'scanner') && (
