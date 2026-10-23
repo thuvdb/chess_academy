@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.api.endpoints import (
+    admin_ai_settings,
     ai_tutor,
     assignments,
     auth,
@@ -36,4 +37,5 @@ api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(settings.settings_router, prefix="/settings", tags=["settings"])
 api_router.include_router(settings.catalogs_router, prefix="/catalogs", tags=["catalogs"])
 api_router.include_router(ai_tutor.router, prefix="/ai-tutor", tags=["ai-tutor"])
+api_router.include_router(admin_ai_settings.router, prefix="/admin", tags=["admin-ai-settings"])
 

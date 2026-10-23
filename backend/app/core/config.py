@@ -106,6 +106,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.8-flash"
     AI_TUTOR_PROVIDER: str = "gemini"
+    AI_SETTINGS_SECRET: str = ""
     AI_TUTOR_RATE_LIMIT_PER_MINUTE: int = 10
     AI_TUTOR_RATE_LIMIT_PER_DAY: int = 100
     AI_TUTOR_CACHE_TTL: int = 3600

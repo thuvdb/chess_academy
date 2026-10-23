@@ -54,6 +54,7 @@ from app.services.ai_tutor import (
     save_cached_audio,
     search_approved_puzzles,
 )
+from app.services.llm import LLMProviderError, stream_chat_resilient
 
 logger = logging.getLogger(__name__)
 
@@ -275,84 +276,50 @@ async def chat_stream(
                 }
             return {"error": f"Unknown tool: {name}"}
 
-        # Call LLM Provider with retry & graceful error handling
-        provider = get_llm_provider()
+        # Call Resilient Dynamic LLM Provider
         accumulated_text = ""
         has_emitted_tokens = False
 
-        max_retries = 3
-        total_timeout_limit = 20.0
-        start_time = time.monotonic()
-        stream_completed = False
+        try:
+            async for chunk in stream_chat_resilient(
+                system_instruction=AI_TUTOR_SYSTEM_PROMPT,
+                messages=history_payload,
+                tool_handler=handle_tool_call,
+            ):
+                has_emitted_tokens = True
+                accumulated_text += chunk
+                yield f"event: message\ndata: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
 
-        for attempt in range(1, max_retries + 1):
-            try:
-                async for chunk in provider.stream_chat(
-                    messages=history_payload,
-                    system_instruction=AI_TUTOR_SYSTEM_PROMPT,
-                    max_tokens=settings.AI_TUTOR_MAX_TOKENS,
-                    tool_handler=handle_tool_call,
-                ):
-                    has_emitted_tokens = True
-                    accumulated_text += chunk
-                    # Yield text chunk to client
-                    yield f"event: message\ndata: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        except (AIProviderError, LLMProviderError) as e:
+            err_code = getattr(e, "code", "other")
+            err_msg = getattr(e, "message", str(e))
+            err_retryable = getattr(e, "retryable", False)
+            logger.warning("AI Provider Error during stream: [%s] %s", err_code, err_msg)
 
-                stream_completed = True
-                break
+            # Refund rate limit so student is not penalized for external Gemini overloads/quotas
+            if err_code in ("overloaded", "quota"):
+                await refund_ai_tutor_rate_limit(current_user.id)
 
-            except AIProviderError as e:
-                elapsed = time.monotonic() - start_time
-                logger.warning(
-                    "AI Provider Error during stream (attempt %d/%d, elapsed %.2fs): [%s] %s",
-                    attempt,
-                    max_retries,
-                    elapsed,
-                    e.code,
-                    e.message,
-                )
+            error_payload = {
+                "error": err_msg,
+                "code": err_code,
+                "retryable": not has_emitted_tokens and err_retryable,
+            }
+            done_payload = {"error": True, "code": err_code}
+            yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
+            yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
+            return
 
-                # Retry only if no tokens emitted yet, error is retryable, attempts remain, and under 20s cap
-                if (
-                    not has_emitted_tokens
-                    and e.retryable
-                    and attempt < max_retries
-                    and elapsed < total_timeout_limit
-                ):
-                    backoff = 2 ** (attempt - 1)  # 1s, 2s, 4s
-                    jitter = random.uniform(0.1, 0.4)
-                    delay = min(backoff + jitter, max(0.1, total_timeout_limit - elapsed))
-                    logger.info("Retrying AI request in %.2fs (attempt %d/%d)...", delay, attempt + 1, max_retries)
-                    await asyncio.sleep(delay)
-                    continue
-
-                # Refund rate limit so student is not penalized for external Gemini overloads/quotas
-                if e.code in ("overloaded", "quota"):
-                    await refund_ai_tutor_rate_limit(current_user.id)
-
-                error_payload = {
-                    "error": e.message,
-                    "code": e.code,
-                    "retryable": not has_emitted_tokens and e.retryable,
-                }
-                done_payload = {"error": True, "code": e.code}
-                yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
-                yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
-                return
-
-            except Exception as e:
-                logger.error("Unexpected error in AI Tutor stream (attempt %d/%d): %s", attempt, max_retries, e)
-                error_payload = {
-                    "error": "Có lỗi bất ngờ khi trao đổi với AI. Vui lòng thử lại sau.",
-                    "code": "other",
-                    "retryable": not has_emitted_tokens,
-                }
-                done_payload = {"error": True, "code": "other"}
-                yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
-                yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
-                return
-
-        if not stream_completed:
+        except Exception as e:
+            logger.error("Unexpected error in AI Tutor stream: %s", e)
+            error_payload = {
+                "error": "Có lỗi bất ngờ khi trao đổi với AI. Vui lòng thử lại sau.",
+                "code": "other",
+                "retryable": not has_emitted_tokens,
+            }
+            done_payload = {"error": True, "code": "other"}
+            yield f"event: error\ndata: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
+            yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
             return
 
         # 5. Extract & validate board illustration

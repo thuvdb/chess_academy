@@ -1,0 +1,36 @@
+{
+  "task_id": "CAMS-0061",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "CAMS-AI-12a: LLM provider abstraction + AI settings in DB",
+  "specialists_invoked": [
+    "cams-database",
+    "cams-backend",
+    "cams-security",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "AI_SETTINGS_SECRET is loaded from env and validated as 32-byte Fernet base64.",
+    "Database models include ai_providers, ai_settings, and ai_settings_audit.",
+    "Key masking exposes at most first 7 and last 4 characters separated by ellipses, or masked bullet points if short.",
+    "OpenAI-compatible client supports streaming SSE format over httpx.",
+    "Auto-seed creates default Google Gemini provider and settings if DB has no providers on startup."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "4708f27",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-23T19:54:00+07:00"
+}
