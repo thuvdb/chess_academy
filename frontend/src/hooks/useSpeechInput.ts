@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  getSpeechRecognitionContinuous,
+  processSpeechRecognitionResults,
+  mapSpeechErrorToVietnamese,
+} from '../utils/speech';
 
 // TypeScript declaration for Web Speech API
 declare global {
@@ -10,12 +15,13 @@ declare global {
 
 export interface UseSpeechInputOptions {
   lang?: string;
+  continuous?: boolean;
   onTranscript?: (transcript: string, isFinal: boolean) => void;
   onError?: (errorMessage: string) => void;
 }
 
 export function useSpeechInput(options: UseSpeechInputOptions = {}) {
-  const { lang = 'vi-VN', onTranscript, onError } = options;
+  const { lang = 'vi-VN', continuous, onTranscript, onError } = options;
 
   const [isSupported, setIsSupported] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -62,7 +68,11 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}) {
       return;
     }
 
-    recognition.continuous = true;
+    // Set continuous: false on mobile/Android to prevent looping/duplication, true on desktop
+    const isContinuous =
+      continuous !== undefined ? continuous : getSpeechRecognitionContinuous();
+
+    recognition.continuous = isContinuous;
     recognition.interimResults = true;
     recognition.lang = lang;
 
@@ -87,7 +97,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}) {
     };
 
     recognition.onstart = () => {
-      console.log('[STT] onstart: Recognition started');
+      console.log('[STT] onstart: Recognition started (continuous=' + isContinuous + ')');
       setIsListening(true);
       setErrorMessage(null);
     };
@@ -100,24 +110,8 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}) {
         event.results?.length
       );
 
-      let finalAccumulated = '';
-      let interimCurrent = '';
-
-      if (event.results) {
-        for (let i = 0; i < event.results.length; ++i) {
-          const item = event.results[i];
-          if (!item || !item[0]) continue;
-          if (item.isFinal) {
-            finalAccumulated += item[0].transcript;
-          } else {
-            interimCurrent += item[0].transcript;
-          }
-        }
-      }
-
-      const fullTranscript = (finalAccumulated + interimCurrent).trim();
-      const hasFinal = Boolean(finalAccumulated);
-      const isCompleteFinal = interimCurrent.length === 0 && hasFinal;
+      const { finalAccumulated, interimCurrent, fullTranscript, isCompleteFinal } =
+        processSpeechRecognitionResults(event.results);
 
       console.log('[STT] Transcript update:', {
         finalAccumulated,
@@ -127,7 +121,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}) {
       });
 
       if (finalAccumulated) {
-        setTranscript(finalAccumulated.trim());
+        setTranscript(finalAccumulated);
       }
       setInterimTranscript(interimCurrent);
 
@@ -138,29 +132,10 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}) {
 
     recognition.onerror = (event: any) => {
       console.error('[STT] onerror:', event.error, event.message, event);
-      let message = 'Có lỗi xảy ra khi nhận diện giọng nói.';
-      switch (event.error) {
-        case 'not-allowed':
-        case 'service-not-allowed':
-          message = 'Chưa cấp quyền Microphone. Vui lòng cho phép quyền microphone trong cài đặt trình duyệt.';
-          break;
-        case 'no-speech':
-          message = 'Không nghe thấy giọng nói. Vui lòng nói to và rõ hơn.';
-          break;
-        case 'network':
-          message = 'Không kết nối được dịch vụ nhận dạng giọng nói. Vui lòng kiểm tra kết nối mạng.';
-          break;
-        case 'audio-capture':
-          message = 'Không tìm thấy microphone. Vui lòng kiểm tra thiết bị thu âm.';
-          break;
-        case 'language-not-supported':
-          message = 'Ngôn ngữ tiếng Việt (vi-VN) không được trình duyệt này hỗ trợ.';
-          break;
-        case 'aborted':
-          console.log('[STT] Recognition aborted');
-          return;
-        default:
-          message = `Lỗi nhận diện giọng nói: ${event.error || 'không xác định'}`;
+      const message = mapSpeechErrorToVietnamese(event.error);
+      if (!message) {
+        console.log('[STT] Recognition aborted silently');
+        return;
       }
 
       setErrorMessage(message);
@@ -188,7 +163,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}) {
         recognitionRef.current = null;
       }
     };
-  }, [lang]);
+  }, [lang, continuous]);
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) {

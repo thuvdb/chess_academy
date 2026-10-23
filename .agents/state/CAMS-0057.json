@@ -1,0 +1,32 @@
+{
+  "task_id": "CAMS-0057",
+  "type": "BUGFIX",
+  "state": "DONE",
+  "title": "Fix speech recognition duplicate transcript on Chrome Android (CAMS-AI-11)",
+  "specialists_invoked": [
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "NOT_REQUIRED",
+    "deploy_approval": "N/A"
+  },
+  "retries": {},
+  "assumptions": [
+    "Deduplication helper should be modular and unit-testable.",
+    "Mobile detection can check navigator.userAgent or match mobile devices to set continuous=false on mobile while desktop keeps continuous=true.",
+    "Preserve pre-existing text in the text input box when starting a speech session."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "762ef1a",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-23T08:46:00+07:00"
+}

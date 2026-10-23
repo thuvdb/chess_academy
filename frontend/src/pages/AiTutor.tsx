@@ -29,6 +29,7 @@ import BoardPreview, { type BoardData } from '../components/ai/BoardPreview';
 import PuzzleCard, { type PuzzleData } from '../components/ai/PuzzleCard';
 import useSpeechInput from '../hooks/useSpeechInput';
 import { stripBoardTags } from '../utils/aiTutor';
+import { appendTranscriptToBase } from '../utils/speech';
 
 interface ChatSession {
   id: string;
@@ -107,13 +108,7 @@ export const AiTutor: React.FC = () => {
   } = useSpeechInput({
     lang: 'vi-VN',
     onTranscript: (spokenText) => {
-      const base = speechBaseInputRef.current;
-      if (base && base.trim().length > 0) {
-        const separator = base.endsWith(' ') ? '' : ' ';
-        setInputMessage(`${base}${separator}${spokenText.trimStart()}`);
-      } else {
-        setInputMessage(spokenText);
-      }
+      setInputMessage(appendTranscriptToBase(speechBaseInputRef.current, spokenText));
     },
     onError: (err) => {
       toast.error(err);
