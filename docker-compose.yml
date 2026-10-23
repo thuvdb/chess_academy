@@ -54,7 +54,9 @@ services:
       dockerfile: Dockerfile
     container_name: cams_backend
     restart: always
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      AI_SETTINGS_SECRET: ${AI_SETTINGS_SECRET:?set AI_SETTINGS_SECRET in .env}
     # No published ports in base compose: internal network only (nginx proxies /api, /ws, /static).
     # For local debug with port 8000 and --reload, see docker-compose.override.yml.
     volumes:
