@@ -1,0 +1,47 @@
+# Auto detect text files and perform LF normalization on checkin
+* text=auto eol=lf
+
+# Windows scripts (require CRLF for native execution)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Unix shell scripts (require LF to execute in Linux / Docker containers)
+*.sh text eol=lf
+
+# Source code files
+*.py text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.sql text eol=lf
+
+# Binary files (prevent any accidental line ending modifications)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.onnx binary
+*.pt binary
+*.pth binary
+*.dump binary
+*.sqlite binary
+*.db binary
+*.tar binary
+*.gz binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
