@@ -59,7 +59,6 @@ export default function Settings() {
   const [centerFormFacebook, setCenterFormFacebook] = useState('');
   const [centerFormPlan, setCenterFormPlan] = useState('free');
   const [centerSaving, setCenterSaving] = useState(false);
-  const [cleaningUp, setCleaningUp] = useState(false);
 
   // Profile form state
   const [profileFullName, setProfileFullName] = useState(user?.full_name || '');
@@ -283,21 +282,6 @@ export default function Settings() {
     }
   };
 
-  const handleCleanupTestCenters = async () => {
-    if (!window.confirm('Hệ thống sẽ quét và xóa các cơ sở thử nghiệm mẫu (QA Test Center) có 0 thành viên và 0 lớp học. Bạn có chắc muốn tiếp tục?')) {
-      return;
-    }
-    try {
-      setCleaningUp(true);
-      const res = await centerApi.cleanupTestCenters();
-      toast.success(res.message);
-      await fetchCentersList(centerSearch);
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Dọn dẹp trung tâm thử nghiệm thất bại');
-    } finally {
-      setCleaningUp(false);
-    }
-  };
 
   // Save single setting
   const handleSaveSetting = async (key: string) => {
@@ -564,20 +548,6 @@ export default function Settings() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={handleCleanupTestCenters}
-                  disabled={cleaningUp}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 transition disabled:opacity-50"
-                  title="Xóa nhanh các trung tâm kiểm thử tự động (QA Test Center) trống"
-                >
-                  {cleaningUp ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  )}
-                  Dọn dẹp bản ghi Test
-                </button>
-
                 <button
                   onClick={handleOpenCreateCenter}
                   className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-sm font-bold shadow-lg shadow-amber-500/20 transition"

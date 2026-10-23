@@ -63,9 +63,5 @@ export const centerApi = {
     const res = await api.delete(`/centers/${id}`);
     return res.data;
   },
-
-  cleanupTestCenters: async (): Promise<{ deleted_count: number; message: string }> => {
-    const res = await api.post('/centers/cleanup-test-centers');
-    return res.data;
-  },
 };
+

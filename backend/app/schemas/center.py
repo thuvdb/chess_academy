@@ -38,6 +38,3 @@ class CenterRead(CenterBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class CenterCleanupResult(BaseModel):
-    deleted_count: int
-    message: str

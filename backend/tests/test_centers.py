@@ -59,6 +59,30 @@ USER_TEACHER_A = User(
     elo_rating=800,
 )
 
+STUDENT_A_ID = uuid.uuid4()
+PARENT_A_ID = uuid.uuid4()
+
+USER_STUDENT_A = User(
+    id=STUDENT_A_ID,
+    email="student_a@cams.test",
+    full_name="Student A",
+    role=Role.STUDENT.value,
+    center_id=CENTER_A,
+    is_active=True,
+    elo_rating=800,
+)
+
+USER_PARENT_A = User(
+    id=PARENT_A_ID,
+    email="parent_a@cams.test",
+    full_name="Parent A",
+    role=Role.PARENT.value,
+    center_id=CENTER_A,
+    is_active=True,
+    elo_rating=800,
+)
+
+
 
 class MockResult:
     def __init__(self, items):
@@ -200,3 +224,147 @@ async def test_delete_center_success_when_empty(async_client):
         assert res.json()["message"] == "Đã xóa trung tâm thành công"
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_create_center_unauthorized_without_token(async_client):
+    res = await async_client.post(
+        "/api/centers",
+        json={"name": "No Token Center"},
+    )
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_center_unauthorized_without_token(async_client):
+    res = await async_client.delete(f"/api/centers/{CENTER_A}")
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_center_forbidden_for_student_and_parent(async_client):
+    for u in [USER_STUDENT_A, USER_PARENT_A]:
+        app.dependency_overrides[get_current_user] = lambda user=u: user
+        try:
+            res = await async_client.post(
+                "/api/centers",
+                json={"name": "Student Center"},
+            )
+            assert res.status_code == 403
+        finally:
+            app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_delete_center_forbidden_for_center_admin(async_client):
+    app.dependency_overrides[get_current_user] = lambda: USER_ADMIN_A
+    try:
+        res = await async_client.delete(f"/api/centers/{CENTER_A}")
+        assert res.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_delete_center_forbidden_for_teacher(async_client):
+    app.dependency_overrides[get_current_user] = lambda: USER_TEACHER_A
+    try:
+        res = await async_client.delete(f"/api/centers/{CENTER_A}")
+        assert res.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_delete_center_forbidden_for_student_and_parent(async_client):
+    for u in [USER_STUDENT_A, USER_PARENT_A]:
+        app.dependency_overrides[get_current_user] = lambda user=u: user
+        try:
+            res = await async_client.delete(f"/api/centers/{CENTER_A}")
+            assert res.status_code == 403
+        finally:
+            app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_update_center_own_center_admin_success(async_client):
+    center = Center(
+        id=CENTER_A,
+        name="Học Viện Lion Chess",
+        phone="0911223344",
+        subscription_plan="basic",
+    )
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=MockResult(center))
+    mock_db.scalar = AsyncMock(return_value=0)
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    app.dependency_overrides[get_current_user] = lambda: USER_ADMIN_A
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    try:
+        res = await async_client.put(
+            f"/api/centers/{CENTER_A}",
+            json={"name": "Học Viện Lion Chess Đổi Tên", "phone": "0988776655"},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["name"] == "Học Viện Lion Chess Đổi Tên"
+        assert data["phone"] == "0988776655"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_update_center_other_center_admin_forbidden_404(async_client):
+    center_b = Center(
+        id=CENTER_B,
+        name="Trung Tâm Khác",
+        subscription_plan="free",
+    )
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=MockResult(center_b))
+
+    app.dependency_overrides[get_current_user] = lambda: USER_ADMIN_A
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    try:
+        res = await async_client.put(
+            f"/api/centers/{CENTER_B}",
+            json={"name": "Chiếm Quyền Trung Tâm Khác"},
+        )
+        # assert_same_center raises 404 Not Found to prevent tenant enumeration
+        assert res.status_code == 404
+        assert res.json()["detail"] == "Trung tâm không tồn tại"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_update_center_admin_cannot_change_subscription_plan(async_client):
+    center = Center(
+        id=CENTER_A,
+        name="Học Viện Lion Chess",
+        subscription_plan="free",
+    )
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=MockResult(center))
+    mock_db.scalar = AsyncMock(return_value=0)
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    app.dependency_overrides[get_current_user] = lambda: USER_ADMIN_A
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    try:
+        res = await async_client.put(
+            f"/api/centers/{CENTER_A}",
+            json={"name": "Học Viện Lion Chess", "subscription_plan": "premium"},
+        )
+        assert res.status_code == 200
+        # subscription_plan remains 'free', not changed to 'premium'
+        assert center.subscription_plan == "free"
+    finally:
+        app.dependency_overrides.clear()
+

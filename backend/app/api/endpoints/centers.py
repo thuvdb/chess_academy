@@ -21,7 +21,6 @@ from app.models.scan import ScanJob, ScanResult
 from app.models.tournament import Tournament
 from app.models.user import User
 from app.schemas.center import (
-    CenterCleanupResult,
     CenterCreate,
     CenterRead,
     CenterUpdate,
@@ -248,63 +247,3 @@ async def delete_center(
 
     return {"message": "Đã xóa trung tâm thành công", "id": str(center_id)}
 
-
-@router.post("/cleanup-test-centers", response_model=CenterCleanupResult)
-async def cleanup_test_centers(
-    current_user: User = Depends(require_roles(Role.SUPER_ADMIN)),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Super Admin helper: Delete test centers generated during automated QA runs.
-    Cleans up QA test centers and their dummy QA test classes/users (@example.com).
-    Never deletes centers with real users or real classes.
-    """
-    stmt = select(Center).where(
-        or_(
-            Center.name.ilike("%QA Test Center%"),
-            Center.email.ilike("%center_tournament%"),
-        )
-    )
-    result = await db.execute(stmt)
-    test_centers = result.scalars().all()
-
-    deleted_count = 0
-    for tc in test_centers:
-        real_users = await db.scalar(
-            select(func.count(User.id)).where(
-                User.center_id == tc.id,
-                ~User.email.ilike("%@example.com%"),
-            )
-        )
-        real_classes = await db.scalar(
-            select(func.count(Class.id)).where(
-                Class.center_id == tc.id,
-                ~Class.name.ilike("%QA Test%"),
-            )
-        )
-
-        if (real_users or 0) == 0 and (real_classes or 0) == 0:
-            await db.execute(update(Puzzle).where(Puzzle.center_id == tc.id).values(center_id=None))
-            await db.execute(update(Tournament).where(Tournament.center_id == tc.id).values(center_id=None))
-            await db.execute(update(Class).where(Class.center_id == tc.id).values(center_id=None))
-            await db.execute(update(User).where(User.center_id == tc.id).values(center_id=None))
-            tc_job_ids = (await db.scalars(select(ScanJob.id).where(ScanJob.center_id == tc.id))).all()
-            if tc_job_ids:
-                await db.execute(delete(ScanResult).where(ScanResult.job_id.in_(tc_job_ids)))
-            await db.execute(delete(ScanJob).where(ScanJob.center_id == tc.id))
-            tc_inv_ids = (await db.scalars(select(Invoice.id).where(Invoice.center_id == tc.id))).all()
-            if tc_inv_ids:
-                await db.execute(delete(Payment).where(Payment.invoice_id.in_(tc_inv_ids)))
-            await db.execute(delete(Invoice).where(Invoice.center_id == tc.id))
-            await db.execute(delete(FeePlan).where(FeePlan.center_id == tc.id))
-            await db.execute(delete(Branch).where(Branch.center_id == tc.id))
-            await db.delete(tc)
-            await db.flush()
-            deleted_count += 1
-
-    await db.commit()
-
-    return CenterCleanupResult(
-        deleted_count=deleted_count,
-        message=f"Đã dọn dẹp thành công {deleted_count} cơ sở thử nghiệm mẫu.",
-    )
