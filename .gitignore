@@ -35,6 +35,7 @@ assignments_screenshot.png
 test.json
 *.sqlite
 *.db
+cleanup_decisions*.json
 
 # IDE / OS
 .vscode/
