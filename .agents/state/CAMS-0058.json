@@ -1,0 +1,34 @@
+{
+  "task_id": "CAMS-0058",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "Fix members list 500 on reserved TLD emails and implement Center Management tab in Settings for Super Admin",
+  "specialists_invoked": [
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "Allow email: str in UserRead schema so existing emails with .test or internal domain don't fail Pydantic validation.",
+    "Implement Center CRUD endpoints for super_admin (GET, POST, PUT, DELETE /api/centers).",
+    "Add Center Management tab in Settings.tsx for super_admin (Option A).",
+    "Provide cleanup option or ability to delete stale 'QA Test Center' records."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "a215673",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-23T11:40:00+07:00"
+}

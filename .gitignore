@@ -53,3 +53,6 @@ docker-compose.*.override.yml
 !docker-compose.override.yml.example
 
 backend/storage/tts_cache/
+
+# thư mục này tra cứu dữ liệu phân tích nháp
+scratch/

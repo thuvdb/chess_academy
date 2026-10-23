@@ -1,0 +1,34 @@
+{
+  "task_id": "CAMS-0059",
+  "type": "REFACTOR",
+  "state": "DONE",
+  "title": "Clean test users and implement test data isolation & automated teardown helper (Bước 0 - 5)",
+  "specialists_invoked": [
+    "cams-database",
+    "cams-backend",
+    "cams-qa"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "All test users outside canonical Lion Chess and Super Admin groups deleted atomically with safe FK cascading/nulling.",
+    "Preserved 72 chess puzzles (created_by set to NULL) and 4 classes (teacher_id set to NULL).",
+    "Integration tests standardized with qa_e2e_* prefixes and mandatory teardown using independent asyncpg connection.",
+    "Fallback sweep purges any leftover qa_e2e_* artifacts."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "a215673",
+      "has_uncommitted": true
+    }
+  },
+  "updated_at": "2026-10-23T17:34:00+07:00"
+}
