@@ -11,6 +11,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_role
@@ -24,6 +25,7 @@ from app.schemas.ai_settings import (
     AIProviderOut,
     AIProviderTestResponse,
     AIProviderUpdate,
+    AISettingsAuditOut,
     AISettingsOut,
     AISettingsUpdate,
 )
@@ -419,3 +421,35 @@ async def list_provider_models(
             )
 
     return AIModelsResponse(models=stored_models, source="stored")
+
+
+@router.get("/audit", response_model=list[AISettingsAuditOut])
+async def get_ai_settings_audit_history(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(["super_admin"])),
+):
+    """Retrieve audit history log for AI settings changes."""
+    stmt = (
+        select(AISettingsAudit)
+        .options(selectinload(AISettingsAudit.user))
+        .order_by(AISettingsAudit.created_at.desc())
+        .limit(limit)
+    )
+    res = await db.execute(stmt)
+    entries = res.scalars().all()
+    out = []
+    for e in entries:
+        user_name = e.user.full_name if e.user else "Hệ thống"
+        out.append(
+            AISettingsAuditOut(
+                id=e.id,
+                user_id=e.user_id,
+                user_name=user_name,
+                action=e.action,
+                details=e.details or {},
+                created_at=e.created_at,
+            )
+        )
+    return out
+

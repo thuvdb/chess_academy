@@ -81,3 +81,15 @@ class AIModelsResponse(BaseModel):
     models: list[str]
     source: str  # "remote" | "stored"
     error: Optional[str] = None
+
+
+class AISettingsAuditOut(BaseModel):
+    id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    user_name: Optional[str] = None
+    action: str
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+

@@ -12,7 +12,7 @@ import pytest
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.main import app
-from app.models.ai_settings import AIProvider, AISettings
+from app.models.ai_settings import AIProvider, AISettings, AISettingsAudit
 from app.models.user import User
 from app.services.llm.crypto import decrypt_api_key, encrypt_api_key
 
@@ -20,6 +20,7 @@ from app.services.llm.crypto import decrypt_api_key, encrypt_api_key
 def _make_user(role: str = "super_admin") -> User:
     u = MagicMock(spec=User)
     u.id = uuid.uuid4()
+    u.full_name = f"Mock {role.title()}"
     u.role = role
     u.is_active = True
     u.center_id = uuid.uuid4()
@@ -58,10 +59,20 @@ def test_env():
         updated_at=datetime.now(timezone.utc),
     )
 
+    mock_audit = AISettingsAudit(
+        id=uuid.uuid4(),
+        user_id=super_admin.id,
+        action="UPDATE_AI_SETTINGS",
+        details={"temperature": 0.7},
+        created_at=datetime.now(timezone.utc),
+    )
+    mock_audit.user = super_admin
+
     state = {
         "user": super_admin,
         "providers": {prov_id: mock_provider},
         "settings": mock_settings,
+        "audits": [mock_audit],
         "raw_key": raw_key,
     }
 
@@ -75,7 +86,11 @@ def test_env():
             return None
 
         async def execute(self, stmt):
+            stmt_str = str(stmt).lower()
             mock_res = MagicMock()
+            if "ai_settings_audit" in stmt_str:
+                mock_res.scalars.return_value.all.return_value = state["audits"]
+                return mock_res
             mock_res.scalars.return_value.all.return_value = list(state["providers"].values())
             return mock_res
 
@@ -95,6 +110,8 @@ def test_env():
                 state["providers"][obj.id] = obj
             if isinstance(obj, AISettings):
                 state["settings"] = obj
+            if isinstance(obj, AISettingsAudit):
+                state["audits"].append(obj)
 
         async def flush(self):
             pass
@@ -228,3 +245,21 @@ async def test_test_provider_endpoint(test_env):
             assert data["success"] is True
             assert data["response"] == "OK"
             assert data["latency_ms"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_get_audit_history_superadmin(test_env):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        test_env["user"] = _make_user("super_admin")
+        resp = await client.get("/api/admin/ai-settings/audit")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        entry = data[0]
+        assert entry["action"] == "UPDATE_AI_SETTINGS"
+        assert "user_name" in entry
+        assert entry["user_name"] == "Mock Super_Admin"
+        assert "key" not in str(entry["details"]).lower()
+

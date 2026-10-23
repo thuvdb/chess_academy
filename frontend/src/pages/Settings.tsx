@@ -23,11 +23,13 @@ import {
   Trash2,
   Search,
   X,
+  Bot,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import { settingsApi, type SettingItem, type CatalogItem } from '../lib/settingsApi';
 import { centerApi, type Center, type CenterCreatePayload } from '../lib/centerApi';
+import AISettingsTab from '../components/admin/AISettingsTab';
 
 export default function Settings() {
   const { user, setUser } = useAuthStore();
@@ -464,6 +466,17 @@ export default function Settings() {
               <ScanSearch className="w-4 h-4" />
               AI Scanner
             </button>
+            <button
+              onClick={() => setActiveTab('ai_settings')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'ai_settings'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Bot className="w-4 h-4" />
+              Cấu hình AI
+            </button>
           </>
         )}
 
@@ -530,6 +543,11 @@ export default function Settings() {
           Bảo mật & Mật khẩu
         </button>
       </div>
+
+      {/* Tab: AI Settings (Super Admin Only) */}
+      {activeTab === 'ai_settings' && isSuperAdmin && (
+        <AISettingsTab />
+      )}
 
       {/* Tab: Centers Management (Super Admin) */}
       {activeTab === 'centers' && isSuperAdmin && (
