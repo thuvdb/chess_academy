@@ -299,9 +299,10 @@ async def stream_chat_resilient(
             if has_emitted_tokens:
                 raise
             # If fallback also failed, raise structured error with clean message
-            fb_err_msg = str(fb_err)
+            primary_err_msg = getattr(last_error, "message", str(last_error)) if last_error else "lỗi kết nối"
+            fb_err_msg = getattr(fb_err, "message", str(fb_err))
             raise LLMProviderError(
-                f"Cả nhà cung cấp AI chính ({primary_name}) và dự phòng ({fb_name}) đều không phản hồi: {fb_err_msg}",
+                f"Cả {primary_name} ({primary_err_msg}) và {fb_name} ({fb_err_msg}) đều gặp sự cố.",
                 code="overloaded",
                 retryable=True,
                 provider_name=fb_name,

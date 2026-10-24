@@ -95,6 +95,18 @@ class OpenAICompatClient(LLMClient):
                         safe_err = sanitize_sensitive_text(raw_err_str, known_secrets=[self.api_key])
                         status = response.status_code
 
+                        # Extract error detail message from JSON if present
+                        err_detail = ""
+                        try:
+                            parsed = json.loads(safe_err)
+                            err_detail = (
+                                parsed.get("error", {}).get("message")
+                                if isinstance(parsed.get("error"), dict)
+                                else (parsed.get("error") or parsed.get("message") or "")
+                            )
+                        except Exception:
+                            err_detail = safe_err[:150]
+
                         logger.warning(
                             "OpenAI-compat API error [status=%d]: %s",
                             status,
@@ -107,7 +119,7 @@ class OpenAICompatClient(LLMClient):
                                 "day" if ("day" in lower or "rpd" in lower or "daily" in lower) else "unknown"
                             )
                             raise LLMProviderError(
-                                "Hệ thống AI đang tạm thời vượt hạn ngạch (quota) của dịch vụ. Vui lòng thử lại sau vài phút.",
+                                f"Hệ thống AI đang tạm thời vượt hạn ngạch (quota) của dịch vụ ({period}): {err_detail or 'Vui lòng thử lại sau vài phút.'}",
                                 code="quota",
                                 retryable=True,
                                 quota_period=period,
@@ -116,7 +128,7 @@ class OpenAICompatClient(LLMClient):
                             )
                         elif status in (500, 502, 503, 504):
                             raise LLMProviderError(
-                                "Dịch vụ AI đối tác đang gián đoạn hoặc quá tải. Vui lòng thử lại sau.",
+                                f"Dịch vụ AI đối tác đang gián đoạn hoặc quá tải ({status}): {err_detail}",
                                 code="overloaded",
                                 retryable=True,
                                 provider_name="OpenAICompat",
@@ -124,15 +136,25 @@ class OpenAICompatClient(LLMClient):
                             )
                         elif status in (401, 403):
                             raise LLMProviderError(
-                                "Khóa API của nhà cung cấp AI chưa hợp lệ hoặc bị từ chối truy cập.",
+                                f"Khóa API chưa hợp lệ hoặc bị từ chối truy cập ({status}): {err_detail}",
                                 code="auth",
                                 retryable=False,
                                 provider_name="OpenAICompat",
                                 raw_error=safe_err,
                             )
-                        else:
+                        elif status == 404:
+                            detail_str = f": {err_detail}" if err_detail else f" (Model '{target_model}' không tồn tại trên Groq/OpenAI hoặc sai URL)"
                             raise LLMProviderError(
-                                f"Lỗi từ nhà cung cấp AI ({status}). Vui lòng thử lại sau.",
+                                f"Lỗi 404 từ nhà cung cấp AI{detail_str}",
+                                code="not_found",
+                                retryable=False,
+                                provider_name="OpenAICompat",
+                                raw_error=safe_err,
+                            )
+                        else:
+                            detail_str = f": {err_detail}" if err_detail else ""
+                            raise LLMProviderError(
+                                f"Lỗi từ nhà cung cấp AI ({status}){detail_str}",
                                 code="other",
                                 retryable=False,
                                 provider_name="OpenAICompat",
