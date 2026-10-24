@@ -143,6 +143,7 @@ async def get_active_ai_config(db: AsyncSession) -> dict[str, Any]:
             "type": fallback_prov.type if fallback_prov else None,
             "base_url": fallback_prov.base_url if fallback_prov else None,
             "api_key_encrypted": fallback_prov.api_key_encrypted if fallback_prov else "",
+            "models": fallback_prov.models if fallback_prov else [],
             "enabled": fallback_prov.enabled if fallback_prov else False,
         } if fallback_prov and fallback_prov.enabled else None,
     }
@@ -270,7 +271,9 @@ async def stream_chat_resilient(
     # 2. Fallback provider execution if primary failed before token emission
     if not has_emitted_tokens and fb_prov and fb_prov.get("enabled"):
         fb_name = fb_prov.get("name", "Fallback")
-        target_fb_model = fallback_model or "gpt-4o-mini"
+        fb_models = fb_prov.get("models") or []
+        default_fb_model = fb_models[0] if fb_models else "gpt-4o-mini"
+        target_fb_model = fallback_model or default_fb_model
         logger.warning(
             "Primary AI Provider [%s] exhausted retries. Engaging fallback provider [%s] with model [%s]...",
             primary_name,
@@ -295,9 +298,10 @@ async def stream_chat_resilient(
             logger.error("Fallback AI Provider [%s] also failed: %s", fb_name, fb_err)
             if has_emitted_tokens:
                 raise
-            # If fallback also failed, raise structured error
+            # If fallback also failed, raise structured error with clean message
+            fb_err_msg = str(fb_err)
             raise LLMProviderError(
-                "Cả nhà cung cấp AI chính và dự phòng đều không thể xử lý yêu cầu lúc này. Vui lòng thử lại sau.",
+                f"Cả nhà cung cấp AI chính ({primary_name}) và dự phòng ({fb_name}) đều không phản hồi: {fb_err_msg}",
                 code="overloaded",
                 retryable=True,
                 provider_name=fb_name,

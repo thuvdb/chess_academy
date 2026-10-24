@@ -60,13 +60,22 @@ class OpenAICompatClient(LLMClient):
             content = msg.get("content", "")
             formatted_messages.append({"role": role, "content": content})
 
-        payload = {
+        payload: dict[str, Any] = {
             "model": target_model,
             "messages": formatted_messages,
             "temperature": temperature,
-            "max_tokens": max_output_tokens,
             "stream": True,
         }
+
+        # Groq and modern reasoning models reject max_tokens and require max_completion_tokens
+        is_groq = "groq.com" in self.base_url.lower()
+        is_reasoning = any(x in target_model.lower() for x in ["gpt-oss", "o1", "o3", "r1"])
+        if is_groq or is_reasoning:
+            payload["max_completion_tokens"] = max_output_tokens
+            if is_groq and "gpt-oss" in target_model.lower():
+                payload["reasoning_format"] = "raw"
+        else:
+            payload["max_tokens"] = max_output_tokens
 
         headers = {
             "Content-Type": "application/json",
@@ -145,7 +154,7 @@ class OpenAICompatClient(LLMClient):
                             choices = chunk_json.get("choices", [])
                             if choices:
                                 delta = choices[0].get("delta", {})
-                                text = delta.get("content", "")
+                                text = delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content") or ""
                                 if text:
                                     yield text
                         except json.JSONDecodeError:

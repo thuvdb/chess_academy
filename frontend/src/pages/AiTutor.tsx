@@ -471,9 +471,11 @@ export const AiTutor: React.FC = () => {
                 }
               } else if (currentEvent === 'error') {
                 const isOverloaded = data.code === 'overloaded' || data.error?.toLowerCase().includes('quá tải');
-                const friendlyMsg = isOverloaded
-                  ? 'AI đang quá tải do lượng truy cập cao. Vui lòng bấm Thử lại sau vài giây.'
-                  : (data.error || 'Có lỗi xảy ra trong quá trình trao đổi.');
+                const friendlyMsg = data.error
+                  ? data.error
+                  : (isOverloaded
+                    ? 'AI đang quá tải do lượng truy cập cao. Vui lòng bấm Thử lại sau vài giây.'
+                    : 'Có lỗi xảy ra trong quá trình trao đổi.');
 
                 setErrorMessage(friendlyMsg);
                 setIsRetryableError(Boolean(data.retryable ?? true));

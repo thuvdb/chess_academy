@@ -205,8 +205,16 @@ class GeminiLLMProvider(LLMProvider):
                                 ],
                             )
                         )
-                        # Disable tools for subsequent generation turn so it produces final message
-                        config.tools = None
+                        # Retain tools schema so Gemini can validate tool response in contents,
+                        # but instruct model not to call tools further by setting mode to NONE
+                        try:
+                            config.tool_config = types.ToolConfig(
+                                function_calling_config=types.FunctionCallingConfig(
+                                    mode="NONE"
+                                )
+                            )
+                        except Exception:
+                            pass
                         tools = None
                         continue
                     else:

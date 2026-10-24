@@ -263,3 +263,51 @@ async def test_get_audit_history_superadmin(test_env):
         assert entry["user_name"] == "Mock Super_Admin"
         assert "key" not in str(entry["details"]).lower()
 
+
+@pytest.mark.asyncio
+async def test_openai_compat_client_groq_reasoning_and_tokens():
+    from app.services.llm.openai_compat_client import OpenAICompatClient
+
+    client = OpenAICompatClient(
+        base_url="https://api.groq.com/openai/v1",
+        api_key="mock_key",
+        default_model="openai/gpt-oss-20b",
+    )
+
+    captured_payload = None
+
+    class MockStreamResponse:
+        status_code = 200
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def aiter_lines(self):
+            yield 'data: {"choices":[{"delta":{"reasoning":"Thinking step"}}]}'
+            yield 'data: {"choices":[{"delta":{"content":" Final answer"}}]}'
+            yield 'data: [DONE]'
+
+    def mock_stream(method, url, json, headers):
+        nonlocal captured_payload
+        captured_payload = json
+        return MockStreamResponse()
+
+    with patch("httpx.AsyncClient.stream", side_effect=mock_stream):
+        tokens = []
+        async for chunk in client.stream_chat(
+            system_instruction="sys",
+            messages=[{"role": "user", "content": "hi"}],
+            model="openai/gpt-oss-20b",
+            max_output_tokens=1000,
+        ):
+            tokens.append(chunk)
+
+        assert captured_payload is not None
+        assert "max_completion_tokens" in captured_payload
+        assert captured_payload["max_completion_tokens"] == 1000
+        assert "max_tokens" not in captured_payload
+        assert captured_payload["reasoning_format"] == "raw"
+        assert "Thinking step" in tokens
+        assert " Final answer" in tokens
+
+
