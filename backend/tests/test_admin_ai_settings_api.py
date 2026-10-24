@@ -303,11 +303,11 @@ async def test_openai_compat_client_groq_reasoning_and_tokens():
             tokens.append(chunk)
 
         assert captured_payload is not None
-        assert "max_completion_tokens" in captured_payload
-        assert captured_payload["max_completion_tokens"] == 1000
-        assert "max_tokens" not in captured_payload
-        assert captured_payload["reasoning_format"] == "raw"
-        assert "Thinking step" in tokens
+        assert "max_tokens" in captured_payload
+        assert captured_payload["max_tokens"] == 1000
+        assert "reasoning_format" not in captured_payload
+        # User receives ONLY content, NEVER reasoning
+        assert "Thinking step" not in tokens
         assert " Final answer" in tokens
 
 

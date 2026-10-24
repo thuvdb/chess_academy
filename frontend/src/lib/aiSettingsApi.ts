@@ -9,6 +9,7 @@ export interface AIProvider {
   enabled: boolean;
   api_key_masked: string;
   has_key: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high' | null;
   created_at: string;
   updated_at?: string | null;
 }
@@ -38,6 +39,7 @@ export interface AIProviderCreatePayload {
   models: string[];
   enabled?: boolean;
   api_key?: string;
+  reasoning_effort?: 'low' | 'medium' | 'high' | null;
 }
 
 export interface AIProviderUpdatePayload {
@@ -47,6 +49,7 @@ export interface AIProviderUpdatePayload {
   models?: string[];
   enabled?: boolean;
   api_key?: string;
+  reasoning_effort?: 'low' | 'medium' | 'high' | null;
 }
 
 export interface AISettingsUpdatePayload {

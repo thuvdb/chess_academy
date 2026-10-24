@@ -71,6 +71,7 @@ def _serialize_provider(provider: AIProvider) -> AIProviderOut:
         base_url=provider.base_url,
         models=provider.models or [],
         enabled=provider.enabled,
+        reasoning_effort=getattr(provider, "reasoning_effort", None),
         api_key_masked=masked,
         has_key=has_key,
         created_at=provider.created_at,
@@ -203,6 +204,7 @@ async def create_ai_provider(
         name=payload.name,
         type=payload.type,
         base_url=payload.base_url.rstrip("/") if payload.base_url else None,
+        reasoning_effort=payload.reasoning_effort,
         api_key_encrypted=encrypted_key,
         models=payload.models or [],
         enabled=payload.enabled,
@@ -250,6 +252,8 @@ async def update_ai_provider(
         provider.models = payload.models
     if payload.enabled is not None:
         provider.enabled = payload.enabled
+    if "reasoning_effort" in payload.model_fields_set:
+        provider.reasoning_effort = payload.reasoning_effort
 
     # Only update API key if a non-empty string is provided
     if payload.api_key is not None and payload.api_key.strip():
@@ -346,7 +350,7 @@ async def test_ai_provider(
                 messages=[{"role": "user", "content": "Kiểm tra kết nối. Trả lời: OK"}],
                 model=test_model,
                 temperature=0.1,
-                max_output_tokens=20,
+                max_output_tokens=200,
             ):
                 collected_text += chunk
                 if len(collected_text) >= 10:
@@ -357,13 +361,14 @@ async def test_ai_provider(
                 api_key=decrypted_key,
                 default_model=test_model,
                 timeout_seconds=15.0,
+                reasoning_effort=getattr(provider, "reasoning_effort", None),
             )
             async for chunk in client.stream_chat(
                 system_instruction="Chỉ trả lời chính xác: OK",
                 messages=[{"role": "user", "content": "Kiểm tra kết nối. Trả lời: OK"}],
                 model=test_model,
                 temperature=0.1,
-                max_output_tokens=20,
+                max_output_tokens=200,
             ):
                 collected_text += chunk
                 if len(collected_text) >= 10:

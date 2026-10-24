@@ -34,6 +34,7 @@ class AIProvider(Base, UUIDMixin, TimestampMixin):
     api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     models: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    reasoning_effort: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
 
     def __repr__(self) -> str:
         return f"<AIProvider name={self.name} type={self.type} enabled={self.enabled}>"

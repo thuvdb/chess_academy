@@ -46,6 +46,26 @@ async def seed_default_ai_settings_if_needed(db: AsyncSession) -> tuple[AISettin
     Auto-seed default Google Gemini provider and settings if DB tables are empty.
     Allows existing installations to continue operating seamlessly without restart.
     """
+    try:
+        from sqlalchemy import text
+        await db.execute(text("SELECT reasoning_effort FROM ai_providers LIMIT 0"))
+    except Exception:
+        await db.rollback()
+        try:
+            from sqlalchemy import text
+            await db.execute(text("ALTER TABLE ai_providers ADD COLUMN IF NOT EXISTS reasoning_effort VARCHAR(20)"))
+            await db.commit()
+            logger.info("Auto-added missing reasoning_effort column to ai_providers table.")
+        except Exception:
+            await db.rollback()
+            try:
+                from sqlalchemy import text
+                await db.execute(text("ALTER TABLE ai_providers ADD COLUMN reasoning_effort VARCHAR(20)"))
+                await db.commit()
+            except Exception as e2:
+                await db.rollback()
+                logger.warning("Could not add reasoning_effort column: %s", e2)
+
     provider_count = await db.scalar(select(func.count(AIProvider.id)))
     if provider_count and provider_count > 0:
         settings_record = await db.scalar(select(AISettings).limit(1))
@@ -134,6 +154,7 @@ async def get_active_ai_config(db: AsyncSession) -> dict[str, Any]:
             "name": default_prov.name if default_prov else "Mock Provider",
             "type": default_prov.type if default_prov else "mock",
             "base_url": default_prov.base_url if default_prov else None,
+            "reasoning_effort": getattr(default_prov, "reasoning_effort", None) if default_prov else None,
             "api_key_encrypted": default_prov.api_key_encrypted if default_prov else "",
             "enabled": default_prov.enabled if default_prov else True,
         } if default_prov else None,
@@ -142,6 +163,7 @@ async def get_active_ai_config(db: AsyncSession) -> dict[str, Any]:
             "name": fallback_prov.name if fallback_prov else None,
             "type": fallback_prov.type if fallback_prov else None,
             "base_url": fallback_prov.base_url if fallback_prov else None,
+            "reasoning_effort": getattr(fallback_prov, "reasoning_effort", None) if fallback_prov else None,
             "api_key_encrypted": fallback_prov.api_key_encrypted if fallback_prov else "",
             "models": fallback_prov.models if fallback_prov else [],
             "enabled": fallback_prov.enabled if fallback_prov else False,
@@ -180,6 +202,7 @@ def instantiate_llm_client(provider_dict: Optional[dict[str, Any]], timeout_seco
             base_url=base_url,
             api_key=decrypted_key,
             timeout_seconds=timeout_seconds,
+            reasoning_effort=provider_dict.get("reasoning_effort"),
         )
     else:
         from app.services.ai_tutor.provider import MockLLMProvider

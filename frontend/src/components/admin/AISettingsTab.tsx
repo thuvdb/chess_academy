@@ -61,6 +61,7 @@ export default function AISettingsTab() {
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState<'gemini' | 'openai_compatible'>('gemini');
   const [formBaseUrl, setFormBaseUrl] = useState('');
+  const [formReasoningEffort, setFormReasoningEffort] = useState<'low' | 'medium' | 'high' | ''>('');
   const [formApiKey, setFormApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [formModels, setFormModels] = useState<string[]>([]);
@@ -224,6 +225,7 @@ export default function AISettingsTab() {
     setFormName('');
     setFormType('gemini');
     setFormBaseUrl('');
+    setFormReasoningEffort('');
     setFormApiKey('');
     setShowApiKey(false);
     setFormModels(['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro']);
@@ -237,6 +239,7 @@ export default function AISettingsTab() {
     setFormName(provider.name);
     setFormType(provider.type);
     setFormBaseUrl(provider.base_url || '');
+    setFormReasoningEffort(provider.reasoning_effort || '');
     setFormApiKey(''); // Sensitive: left blank when editing
     setShowApiKey(false);
     setFormModels([...provider.models]);
@@ -249,6 +252,7 @@ export default function AISettingsTab() {
     // SECURITY: strictly scrub key from state immediately
     setFormApiKey('');
     setShowApiKey(false);
+    setFormReasoningEffort('');
     setIsModalOpen(false);
     setEditingProvider(null);
   };
@@ -322,6 +326,7 @@ export default function AISettingsTab() {
           base_url: formType === 'openai_compatible' ? formBaseUrl.trim() : null,
           models: formModels,
           enabled: formEnabled,
+          reasoning_effort: formType === 'openai_compatible' ? (formReasoningEffort || null) : null,
         };
         if (formApiKey.trim()) {
           payload.api_key = formApiKey.trim();
@@ -338,6 +343,7 @@ export default function AISettingsTab() {
           base_url: formType === 'openai_compatible' ? formBaseUrl.trim() : null,
           models: formModels,
           enabled: formEnabled,
+          reasoning_effort: formType === 'openai_compatible' ? (formReasoningEffort || null) : null,
         };
         if (formApiKey.trim()) {
           payload.api_key = formApiKey.trim();
@@ -500,6 +506,12 @@ export default function AISettingsTab() {
                         {isFallback && (
                           <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
                             Dự phòng
+                          </span>
+                        )}
+                        {/* Reasoning Effort badge */}
+                        {prov.reasoning_effort && (
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                            Reasoning: {prov.reasoning_effort}
                           </span>
                         )}
                       </div>
@@ -992,6 +1004,32 @@ export default function AISettingsTab() {
                   />
                   <p className="text-[10px] text-slate-500">
                     Endpoint tương thích chuẩn OpenAI Chat Completions
+                  </p>
+                </div>
+              )}
+
+              {/* Reasoning effort (only for OpenAI-compatible) */}
+              {formType === 'openai_compatible' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300 block">
+                    Mức độ suy luận (reasoning_effort)
+                  </label>
+                  <select
+                    value={formReasoningEffort}
+                    onChange={(e) =>
+                      setFormReasoningEffort(
+                        e.target.value as 'low' | 'medium' | 'high' | ''
+                      )
+                    }
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="">Mặc định (Không gửi)</option>
+                    <option value="low">Thấp (low)</option>
+                    <option value="medium">Trung bình (medium)</option>
+                    <option value="high">Cao (high)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-500">
+                    Tùy chọn cho các model suy luận (reasoning models) hỗ trợ reasoning_effort. Nếu nhà cung cấp không hỗ trợ và trả lỗi 400, hệ thống sẽ tự động bỏ qua.
                   </p>
                 </div>
               )}

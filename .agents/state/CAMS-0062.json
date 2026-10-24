@@ -1,0 +1,37 @@
+{
+  "task_id": "CAMS-0062",
+  "type": "FEATURE",
+  "state": "DONE",
+  "title": "CAMS-AI-11e (bổ sung): Reasoning models response handling, token limit error, payload logging & reasoning_effort config",
+  "specialists_invoked": [
+    "cams-database",
+    "cams-backend",
+    "cams-frontend",
+    "cams-qa",
+    "cams-security"
+  ],
+  "gates": {
+    "qa": "PASS",
+    "security": "PASS",
+    "deploy_approval": "NOT_REQUIRED"
+  },
+  "retries": {},
+  "assumptions": [
+    "reasoning_effort can be 'low', 'medium', 'high', or None for openai_compatible providers.",
+    "Groq / OpenAI-compat reasoning models: only extract delta.content (ignore reasoning/reasoning_content).",
+    "When finish_reason is 'length' and no content was emitted, raise user-friendly error suggesting increasing max_tokens.",
+    "Backend logs sanitized request body (no messages content, no API keys) on 400 Bad Request to enable easy comparison with working curl sample.",
+    "If provider returns 400 with reasoning_effort present, automatically retry without reasoning_effort."
+  ],
+  "handoff": {
+    "triggered_at": null,
+    "reason": null,
+    "resume_prompt": null,
+    "git_state": {
+      "branch": "main",
+      "last_commit": "a5746d5",
+      "has_uncommitted": false
+    }
+  },
+  "updated_at": "2026-10-24T13:42:00+07:00"
+}

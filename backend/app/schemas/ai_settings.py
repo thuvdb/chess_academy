@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 class AIProviderBase(BaseModel):
@@ -14,6 +14,24 @@ class AIProviderBase(BaseModel):
     base_url: Optional[str] = Field(None, max_length=500)
     models: list[str] = Field(default_factory=list)
     enabled: bool = True
+    reasoning_effort: Optional[str] = Field(
+        None,
+        description="Reasoning effort level: 'low', 'medium', 'high', or None",
+    )
+
+    @field_validator("reasoning_effort", mode="before")
+    @classmethod
+    def validate_reasoning_effort(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if not clean:
+                return None
+            if clean in ("low", "medium", "high"):
+                return clean
+            raise ValueError("reasoning_effort must be 'low', 'medium', 'high', or None")
+        raise ValueError("reasoning_effort must be a string or None")
 
 
 class AIProviderCreate(AIProviderBase):
@@ -27,6 +45,24 @@ class AIProviderUpdate(BaseModel):
     models: Optional[list[str]] = None
     enabled: Optional[bool] = None
     api_key: Optional[str] = Field(None, description="New API key (omit or leave empty to keep existing)")
+    reasoning_effort: Optional[str] = Field(
+        None,
+        description="Reasoning effort level ('low', 'medium', 'high', or None to reset)",
+    )
+
+    @field_validator("reasoning_effort", mode="before")
+    @classmethod
+    def validate_reasoning_effort(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if not clean:
+                return None
+            if clean in ("low", "medium", "high"):
+                return clean
+            raise ValueError("reasoning_effort must be 'low', 'medium', 'high', or None")
+        raise ValueError("reasoning_effort must be a string or None")
 
 
 class AIProviderOut(AIProviderBase):
