@@ -201,6 +201,9 @@ async def chat_stream(
 
     # 4. Stream generator for SSE
     async def sse_stream():
+        # Send initial SSE comment / heartbeat to immediately open the stream with the client
+        yield ": ping\n\n"
+
         # Check cache first
         cached = await get_cached_ai_response(request.message)
         if cached:

@@ -6,7 +6,7 @@ Requires: role=super_admin
 import logging
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -78,6 +78,17 @@ def _serialize_provider(provider: AIProvider) -> AIProviderOut:
     )
 
 
+def _make_json_safe(obj: Any) -> Any:
+    """Recursively convert UUIDs, datetimes, and other non-JSON types to strings."""
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {str(k): _make_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [_make_json_safe(x) for x in obj]
+    return obj
+
+
 async def _record_audit(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -85,14 +96,15 @@ async def _record_audit(
     details: dict,
 ) -> None:
     """Record an audit trail entry without sensitive API keys."""
-    # Ensure details never contain raw or encrypted keys
-    sanitized_details = {k: v for k, v in details.items() if "key" not in k.lower()}
+    # Ensure details never contain raw or encrypted keys and are strictly JSON-serializable
+    sanitized_details = {k: _make_json_safe(v) for k, v in details.items() if "key" not in k.lower()}
     audit_entry = AISettingsAudit(
         user_id=user_id,
         action=action,
         details=sanitized_details,
     )
     db.add(audit_entry)
+
 
 
 @router.get("", response_model=AdminAISettingsOverview)
@@ -161,7 +173,7 @@ async def update_ai_settings(
         db=db,
         user_id=current_user.id,
         action="UPDATE_AI_SETTINGS",
-        details=payload.model_dump(exclude_unset=True),
+        details=payload.model_dump(mode="json", exclude_unset=True),
     )
 
     await db.commit()
